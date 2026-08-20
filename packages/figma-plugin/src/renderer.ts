@@ -1,5 +1,6 @@
 import type { CompositionPlan } from '@thumbnail-generator/core';
 import { resolveTemplate, type FigmaTemplateBinding } from './templateMapper';
+import { resolveProductAsset } from './assetResolver';
 
 export type RenderPlanResult = { ok: true; nodeId: string } | { ok: false; message: string };
 
@@ -21,7 +22,7 @@ function findTemplateFrame(binding: FigmaTemplateBinding): FrameNode | null {
  * CompositionPlan을 실제 Figma 결과물로 그린다.
  * - 원본 프레임(source of truth)은 절대 수정하지 않는다.
  * - 원본을 clone()해서 만든 새 프레임에만 이미지 슬롯을 교체한다.
- * - 슬롯 레이어/이미지 asset을 찾지 못하면 임의로 진행하지 않고 즉시 실패를 반환한다.
+ * - 슬롯 레이어/이미지 asset(PRODUCT_ASSETS 기반)을 찾지 못하면 임의로 진행하지 않고 즉시 실패를 반환한다.
  */
 export async function renderPlan(plan: CompositionPlan): Promise<RenderPlanResult> {
   const binding = resolveTemplate(plan.layoutKey, plan.channelPresetId);
@@ -72,14 +73,14 @@ export async function renderPlan(plan: CompositionPlan): Promise<RenderPlanResul
       };
     }
 
-    const image = figma.getImageByHash(slot.assetKey);
-    if (!image) {
+    const resolved = await resolveProductAsset(slot.assetKey);
+    if (!resolved.ok) {
       clone.remove();
-      return { ok: false, message: `assetKey "${slot.assetKey}"에 해당하는 이미지를 찾을 수 없습니다.` };
+      return { ok: false, message: resolved.message };
     }
 
     (layer as GeometryMixin & MinimalFillsMixin).fills = [
-      { type: 'IMAGE', imageHash: image.hash, scaleMode: 'FILL' },
+      { type: 'IMAGE', imageHash: resolved.imageHash, scaleMode: 'FILL' },
     ];
   }
 
