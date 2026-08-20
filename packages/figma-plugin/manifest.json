@@ -1,0 +1,9 @@
+{
+  "name": "썸네일 자동생성 (파일럿 · LAYOUT_02)",
+  "id": "com.example.thumbnail-generator-pilot",
+  "api": "1.0.0",
+  "main": "dist/code.js",
+  "ui": "dist/ui.html",
+  "editorType": ["figma"],
+  "networkAccess": { "allowedDomains": ["none"] }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "figma-thumbnail-generator",
+  "private": true,
+  "version": "0.0.1",
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "build:plugin": "npm run build --workspace=@thumbnail-generator/figma-plugin",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  }
+}

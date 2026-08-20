@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2017", "DOM"],
+    "jsx": "react-jsx",
+    "types": ["@figma/plugin-typings"],
+    "noEmit": true
+  },
+  "include": ["src"]
+}

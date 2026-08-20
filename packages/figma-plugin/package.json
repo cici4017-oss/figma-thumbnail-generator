@@ -1,0 +1,21 @@
+{
+  "name": "@thumbnail-generator/figma-plugin",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "build": "node build.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@thumbnail-generator/core": "0.0.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@figma/plugin-typings": "^1.99.0",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "esbuild": "^0.23.1",
+    "typescript": "^5.5.4"
+  }
+}
