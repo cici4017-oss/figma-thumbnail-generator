@@ -8,6 +8,17 @@
  *   node packages/core/scripts/generateWorkOrderTemplate.mjs
  *
  * 이 스크립트는 아직 이 템플릿을 "읽는" 파서와는 무관하다 — 파일과 컬럼 규격만 만든다.
+ *
+ * 채널 모델링 관련 결정: "광고용"/"위탁" 같은 표기는 실제 출력 규격을 바꾸는 공식 분류가 아니라고
+ * 확인되어, 채널 자체의 variant로 모델링하지 않는다. 채널은 실제 출력 규격/템플릿이 달라지는
+ * 판매채널 단위로만 관리한다.
+ *
+ * thumbnailType(basic/staged)은 core 도메인 모델에는 존재하지만 V1 표준 요청서에는 넣지 않는다.
+ * 특수 연출 요청은 우선 "비고"로 받고, parser가 비고 유무만으로 reviewRequired 처리한다.
+ *
+ * 상품 선택은 상품코드가 아니라 "상품명" 드롭다운으로 한다 — 상품코드는 자동화 식별자일 뿐이고
+ * 작성자가 외우거나 직접 고르기엔 불편하기 때문. 상품명을 고르면 상품코드는 수식으로 자동 입력되고
+ * 회색으로 표시해 직접 수정하지 않도록 한다.
  */
 
 import ExcelJS from 'exceljs';
@@ -28,6 +39,11 @@ const COLORS = {
   autoFillCell: 'FFF2F2F2',
 };
 
+/**
+ * 02_상품목록 컬럼 순서: 상품코드(A) 상품군(B) 브랜드(C) 상품명(D) 용량(E)
+ * "상품명"(D열)이 드롭다운 원천이자 자동입력 수식의 조회 키가 되므로, 상품목록 전체에서
+ * 상품명이 고유해야 한다 (그룹이 달라도 이름이 겹치면 안 됨).
+ */
 const PRODUCT_ROWS = {
   simpleMeal: [
     { code: 'SIMPLE_BEEF_JANGJORIM_130', brand: '본죽', name: '소고기장조림', capacity: '130g' },
@@ -40,29 +56,30 @@ const PRODUCT_ROWS = {
   ],
 };
 
+/**
+ * 실제 출력 규격/템플릿이 달라지는 판매채널 단위로만 관리한다.
+ * "광고용"/"위탁" 같은 표기는 공식 분류가 아니므로 여기 포함하지 않는다.
+ */
 const CHANNELS = [
-  { label: '네이버', channelId: 'naver', variantId: '' },
-  { label: '네이버(광고용)', channelId: 'naver', variantId: 'ad' },
-  { label: '카카오', channelId: 'kakao', variantId: '' },
-  { label: '옥션', channelId: 'auction', variantId: '' },
-  { label: '지마켓', channelId: 'gmarket', variantId: '' },
-  { label: '홈앤쇼핑', channelId: 'home-and-shopping', variantId: '' },
-  { label: '알리익스프레스', channelId: 'aliexpress', variantId: '' },
-  { label: 'SSG', channelId: 'ssg', variantId: '' },
-  { label: 'SK스토아', channelId: 'sk-stoa', variantId: '' },
-  { label: '쿠팡', channelId: 'coupang', variantId: '' },
-  { label: '쿠팡(위탁)', channelId: 'coupang', variantId: 'consignment' },
-  { label: 'NS홈쇼핑', channelId: 'ns-shopping', variantId: '' },
-  { label: 'GS샵', channelId: 'gs-shop', variantId: '' },
-  { label: '롯데온', channelId: 'lotte-on', variantId: '' },
-  { label: 'SKT딜', channelId: 'skt-deal', variantId: '' },
-  { label: '올웨이즈', channelId: 'alwayz', variantId: '' },
-  { label: '이랜드몰', channelId: 'eland-mall', variantId: '' },
-  { label: '신세계TV쇼핑(위탁)', channelId: 'shinsegae-tv-shopping', variantId: 'consignment' },
-  { label: '11번가', channelId: '11st', variantId: '' },
-  { label: '11번가(위탁)', channelId: '11st', variantId: 'consignment' },
-  { label: '토스', channelId: 'toss', variantId: '' },
-  { label: '제이슨딜', channelId: 'jasondeal', variantId: '' },
+  { label: '네이버', channelId: 'naver' },
+  { label: '카카오', channelId: 'kakao' },
+  { label: '옥션', channelId: 'auction' },
+  { label: '지마켓', channelId: 'gmarket' },
+  { label: '홈앤쇼핑', channelId: 'home-and-shopping' },
+  { label: '알리익스프레스', channelId: 'aliexpress' },
+  { label: 'SSG', channelId: 'ssg' },
+  { label: 'SK스토아', channelId: 'sk-stoa' },
+  { label: '쿠팡', channelId: 'coupang' },
+  { label: 'NS홈쇼핑', channelId: 'ns-shopping' },
+  { label: 'GS샵', channelId: 'gs-shop' },
+  { label: '롯데온', channelId: 'lotte-on' },
+  { label: 'SKT딜', channelId: 'skt-deal' },
+  { label: '올웨이즈', channelId: 'alwayz' },
+  { label: '이랜드몰', channelId: 'eland-mall' },
+  { label: '신세계TV쇼핑', channelId: 'shinsegae-tv-shopping' },
+  { label: '11번가', channelId: '11st' },
+  { label: '토스', channelId: 'toss' },
+  { label: '제이슨딜', channelId: 'jasondeal' },
 ];
 
 const TEMPLATE_ROW_COUNT = 500; // 데이터 유효성 검사를 미리 적용해 둘 여유 행 수 (100~200건+버퍼)
@@ -157,35 +174,36 @@ async function main() {
   }
   const babyEndRow = r - 1;
 
+  // 드롭다운/자동입력 모두 "상품명"(D열) 기준이므로 defined name도 D열을 가리킨다.
   workbook.definedNames.add(
-    `'02_상품목록'!$A$${simpleMealStartRow}:$A$${simpleMealEndRow}`,
+    `'02_상품목록'!$D$${simpleMealStartRow}:$D$${simpleMealEndRow}`,
     'PRODUCTS_간편식',
   );
-  workbook.definedNames.add(`'02_상품목록'!$A$${babyStartRow}:$A$${babyEndRow}`, 'PRODUCTS_영유아');
+  workbook.definedNames.add(`'02_상품목록'!$D$${babyStartRow}:$D$${babyEndRow}`, 'PRODUCTS_영유아');
 
   productSheet.protect('', { selectLockedCells: true, selectUnlockedCells: false });
 
   // ---------------------------------------------------------------------
   // 03_채널목록 (건드리면 안 됨)
+  // 실제 출력 규격/템플릿이 달라지는 판매채널 단위로만 관리한다 (variant 없음).
   // ---------------------------------------------------------------------
   addLockedSheetBanner(
     channelSheet,
-    4,
+    3,
     '⚠ 이 시트는 자동화 기준 데이터입니다. 직접 수정하지 마세요. 채널 추가/변경은 담당자에게 요청하세요.',
   );
 
   const channelHeaderRow = channelSheet.getRow(2);
-  channelHeaderRow.values = ['채널명', '채널ID', 'variantId', '비고'];
+  channelHeaderRow.values = ['채널명', '채널ID', '비고'];
   styleHeaderRow(channelHeaderRow);
   channelSheet.columns = [
     { key: 'label', width: 22 },
     { key: 'channelId', width: 22 },
-    { key: 'variantId', width: 14 },
     { key: 'note', width: 30 },
   ];
 
   CHANNELS.forEach((c, i) => {
-    channelSheet.getRow(3 + i).values = [c.label, c.channelId, c.variantId, ''];
+    channelSheet.getRow(3 + i).values = [c.label, c.channelId, ''];
   });
   const channelStartRow = 3;
   const channelEndRow = 2 + CHANNELS.length;
@@ -194,34 +212,48 @@ async function main() {
 
   // ---------------------------------------------------------------------
   // 01_작업요청 (실제 입력 시트)
-  // 컬럼: 작업ID(A) 순번(B) 상품군(C) 채널(D) 상품코드(E) 상품명-자동(F) 수량(G) 딱지여부(H) 비고(I)
+  // 컬럼: 작업ID(A) 순번(B) 상품군(C) 채널(D) 상품명(E, 드롭다운) 상품코드(F, 자동입력) 수량(G) 딱지여부(H) 비고(I)
   // 규칙: 같은 작업ID = 하나의 썸네일. 혼합상품은 같은 작업ID로 여러 행(순번 1,2,3...)을 작성한다.
   //       같은 작업ID의 모든 행은 상품군/채널/딱지여부가 동일해야 한다.
+  //       특수 연출(예: 라이프스타일 컷)이 필요하면 "비고"에 적는다 — 별도 컬럼 없음.
   // ---------------------------------------------------------------------
   workSheet.views = [{ state: 'frozen', ySplit: 1 }];
 
   const workHeaderRow = workSheet.getRow(1);
-  workHeaderRow.values = ['작업ID', '순번', '상품군', '채널', '상품코드', '상품명(자동입력)', '수량', '딱지여부', '비고'];
+  workHeaderRow.values = [
+    '작업ID',
+    '순번',
+    '상품군',
+    '채널',
+    '상품명',
+    '상품코드(자동입력)',
+    '수량',
+    '딱지여부',
+    '비고',
+  ];
   styleHeaderRow(workHeaderRow);
   workSheet.columns = [
     { key: 'workId', width: 14 },
     { key: 'seq', width: 8 },
     { key: 'productGroup', width: 12 },
-    { key: 'channel', width: 18 },
-    { key: 'productCode', width: 28 },
-    { key: 'productNameDisplay', width: 28 },
+    { key: 'channel', width: 16 },
+    { key: 'productName', width: 22 },
+    { key: 'productCodeDisplay', width: 28 },
     { key: 'quantity', width: 8 },
     { key: 'badge', width: 10 },
     { key: 'note', width: 30 },
   ];
 
-  const productNameFormula = (row) =>
-    `IFERROR(VLOOKUP($E${row},'02_상품목록'!$A:$E,3,FALSE)&" "&VLOOKUP($E${row},'02_상품목록'!$A:$E,4,FALSE)&" "&VLOOKUP($E${row},'02_상품목록'!$A:$E,5,FALSE),"")`;
+  // 상품명(E)으로 02_상품목록의 D열을 찾아 같은 행의 A열(상품코드)을 반환한다.
+  // VLOOKUP이 아니라 INDEX/MATCH를 쓰는 이유: 상품코드(A)가 상품명(D)보다 왼쪽 열이라
+  // VLOOKUP은 왼쪽 열을 되찾아올 수 없다.
+  const productCodeFormula = (row) =>
+    `IFERROR(INDEX('02_상품목록'!$A:$A,MATCH($E${row},'02_상품목록'!$D:$D,0)),"")`;
 
   for (let row = 2; row <= TEMPLATE_ROW_COUNT + 1; row++) {
     const rowRef = workSheet.getRow(row);
 
-    rowRef.getCell(6).value = { formula: productNameFormula(row) };
+    rowRef.getCell(6).value = { formula: productCodeFormula(row) };
     rowRef.getCell(6).font = { italic: true, color: { argb: 'FF666666' } };
     rowRef.getCell(6).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.autoFillCell } };
 
@@ -247,8 +279,8 @@ async function main() {
       type: 'list',
       allowBlank: false,
       showErrorMessage: true,
-      errorTitle: '상품코드 오류',
-      error: '먼저 상품군을 선택하세요. 선택한 상품군에 등록된 상품코드만 선택할 수 있습니다.',
+      errorTitle: '상품명 오류',
+      error: '먼저 상품군을 선택하세요. 선택한 상품군에 등록된 상품명만 선택할 수 있습니다.',
       formulae: [`INDIRECT("PRODUCTS_"&$C${row})`],
     };
 
@@ -273,27 +305,18 @@ async function main() {
   }
 
   // ---- 예시 2건: 단일상품 1건 + 3종 혼합상품 1건 ----
-  workSheet.getRow(2).values = [
-    'WO-0001',
-    1,
-    '간편식',
-    '네이버',
-    'SIMPLE_QUAIL_JANGJORIM_180',
-    undefined, // F열은 수식이 이미 채워져 있음
-    3,
-    'X',
-    '',
+  // 주의: row.values = [...] 로 통째로 대입하면 배열 안의 undefined가 F열(자동입력 수식)을
+  // 실제로 지워버린다. 반드시 셀 단위로 써서 F열(index 5)은 건드리지 않는다.
+  const exampleRows = [
+    ['WO-0001', 1, '간편식', '네이버', '메추리알 장조림', undefined, 3, 'X', ''],
+    ['WO-0002', 1, '간편식', '카카오', '소고기장조림', undefined, 1, 'O', ''],
+    ['WO-0002', 2, '간편식', '카카오', '메추리알 장조림', undefined, 1, 'O', ''],
+    ['WO-0002', 3, '간편식', '카카오', '부추 꼬막무침', undefined, 1, 'O', ''],
   ];
-
-  const mixedRows = [
-    ['WO-0002', 1, '간편식', '카카오', 'SIMPLE_BEEF_JANGJORIM_130', undefined, 1, 'O', ''],
-    ['WO-0002', 2, '간편식', '카카오', 'SIMPLE_QUAIL_JANGJORIM_180', undefined, 1, 'O', ''],
-    ['WO-0002', 3, '간편식', '카카오', 'SIMPLE_CHIVE_KKOMAK_240', undefined, 1, 'O', ''],
-  ];
-  mixedRows.forEach((values, i) => {
-    const row = workSheet.getRow(3 + i);
+  exampleRows.forEach((values, i) => {
+    const row = workSheet.getRow(2 + i);
     values.forEach((v, colIdx) => {
-      if (colIdx === 5) return; // F열(상품명 자동입력) 수식 유지
+      if (colIdx === 5) return; // F열(상품코드 자동입력) 수식 유지
       row.getCell(colIdx + 1).value = v;
     });
   });
@@ -321,15 +344,22 @@ async function main() {
       '  3) 같은 작업ID 내 일관성',
       '같은 작업ID의 모든 행은 상품군 / 채널 / 딱지여부가 서로 같아야 합니다 (한 썸네일의 속성이므로).',
     ],
-    ['  4) 상품코드가 기준', '상품코드가 자동화가 실제로 사용하는 식별자입니다. "상품명(자동입력)" 열은 확인용 표시일 뿐 수정하지 마세요.'],
-    ['  5) 수량', '양의 정수만 입력할 수 있습니다 (0 이하, 소수 입력 불가 — 입력 시 자동으로 오류가 표시됩니다).'],
-    ['  6) 딱지여부', 'O 또는 X 중 하나를 선택합니다. 빈칸으로 두지 마세요.'],
     [
-      '  7) 비고',
-      '자유롭게 입력할 수 있습니다. 다만 비고가 있는 행은 이후 자동 검증 단계에서 "검토필요(reviewRequired)"로 표시되어, 자동 생성 전에 담당자 확인을 거치게 됩니다.',
+      '  4) 상품 선택',
+      '"상품명" 드롭다운에서 고르세요. "상품코드(자동입력)" 열은 상품명을 기준으로 자동으로 채워지는 자동화 식별자이며, 직접 수정하지 마세요.',
+    ],
+    [
+      '  5) 채널',
+      '실제 출력 규격/템플릿이 달라지는 판매채널 단위입니다. "광고용", "위탁" 같은 표기는 공식 분류가 아니므로 이 목록에 없습니다.',
+    ],
+    ['  6) 수량', '양의 정수만 입력할 수 있습니다 (0 이하, 소수 입력 불가 — 입력 시 자동으로 오류가 표시됩니다).'],
+    ['  7) 딱지여부', 'O 또는 X 중 하나를 선택합니다. 빈칸으로 두지 마세요.'],
+    [
+      '  8) 비고',
+      '자유롭게 입력할 수 있습니다. 라이프스타일 연출컷처럼 결과물 자체가 달라지는 특수 요청도 우선 여기에 적습니다. 비고가 있는 행은 자동 검증 단계에서 "검토필요(reviewRequired)"로 표시되어, 자동 생성 전에 담당자 확인을 거치게 됩니다.',
     ],
     ['', ''],
-    ['상품군/채널/상품코드가 목록에 없다면', '02_상품목록, 03_채널목록에 항목 추가가 필요합니다. 담당자에게 요청하세요.'],
+    ['상품군/채널/상품명이 목록에 없다면', '02_상품목록, 03_채널목록에 항목 추가가 필요합니다. 담당자에게 요청하세요.'],
     ['', ''],
     ['참고', '이 템플릿은 packages/core/scripts/generateWorkOrderTemplate.mjs 스크립트로 재생성할 수 있습니다.'],
   ];
