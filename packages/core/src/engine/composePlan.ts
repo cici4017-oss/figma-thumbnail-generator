@@ -3,6 +3,7 @@ import type { ChannelPreset } from '../domain/channel';
 import type { LayoutDefinition } from '../domain/layout';
 import type { GenerationRequest, GenerationRequestItem } from '../domain/generation-request';
 import type { CompositionPlan, CompositionPlanSlot } from '../domain/composition-plan';
+import { DEFAULT_THUMBNAIL_TYPE } from '../domain/thumbnailType';
 import { selectLayout, type SelectLayoutFailureReason } from './selectLayout';
 
 export type ComposePlanFailureReason =
@@ -66,6 +67,8 @@ export function composePlan(
   const composition: 'single' | 'mixed' =
     new Set(request.items.map((i) => i.productId)).size > 1 ? 'mixed' : 'single';
 
+  const thumbnailType = request.thumbnailType ?? DEFAULT_THUMBNAIL_TYPE;
+
   const selection = selectLayout(
     {
       productGroup,
@@ -74,6 +77,7 @@ export function composePlan(
       giftQuantity: giftProductIds.length,
       channelId: channelPreset.channelId,
       aspectRatioFamily: channelPreset.aspectRatioFamily,
+      thumbnailType,
     },
     deps.layouts,
   );
@@ -108,6 +112,7 @@ export function composePlan(
       layoutKey: selection.layout.layoutKey,
       channelPresetId: channelPreset.id,
       productGroup,
+      thumbnailType,
       slots,
       options: {
         badge: request.options?.badge,

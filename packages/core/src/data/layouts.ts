@@ -18,6 +18,7 @@ export const LAYOUTS: LayoutDefinition[] = [
       productGroups: ['simple-meal'],
       compositions: ['single', 'mixed'],
       aspectRatioFamilies: ['square'],
+      thumbnailTypes: ['basic'],
     },
     priority: 100,
   },

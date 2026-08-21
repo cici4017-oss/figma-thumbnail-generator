@@ -1,5 +1,6 @@
 export * from './domain/product';
 export * from './domain/channel';
+export * from './domain/thumbnailType';
 export * from './domain/layout';
 export * from './domain/generation-request';
 export * from './domain/composition-plan';
@@ -7,4 +8,6 @@ export * from './engine/selectLayout';
 export * from './engine/composePlan';
 export * from './data/channelPresets';
 export * from './data/layouts';
+export * from './data/channels';
+export * from './data/products';
 export * from './import/index';

@@ -2,11 +2,13 @@ import ExcelJS from 'exceljs';
 import type { RawWorkOrderRow } from './types';
 
 const COLUMN_HEADERS = {
-  channel: '구분',
+  workId: '작업ID',
+  seq: '순번',
+  productGroup: '상품군',
+  channel: '채널',
   productName: '상품명',
-  optionName: '옵션명',
-  regularPrice: '정상가',
-  eventPrice: '행사가',
+  productCode: '상품코드(자동입력)',
+  quantity: '수량',
   badge: '딱지여부',
   note: '비고',
 } as const;
@@ -18,29 +20,21 @@ function toRawValue(value: ExcelJS.CellValue): string | number | null {
   if (typeof value === 'number' || typeof value === 'string') return value;
   if (value instanceof Date) return value.toISOString();
   if (typeof value === 'object') {
-    if ('richText' in value) {
-      return value.richText.map((r) => r.text).join('');
-    }
+    if ('richText' in value) return value.richText.map((t) => t.text).join('');
     if ('result' in value) {
       const result = (value as ExcelJS.CellFormulaValue).result;
       return typeof result === 'number' || typeof result === 'string' ? result : null;
     }
-    if ('text' in value) {
-      return String((value as { text: unknown }).text);
-    }
+    if ('text' in value) return String((value as { text: unknown }).text);
   }
   return String(value);
 }
 
-/**
- * 셀이 병합의 일부라면 exceljs의 cell.master(병합 좌상단 셀)를 그대로 사용해 값을 상속한다.
- * "빈 칸 = 직전 값 상속" 휴리스틱을 쓰지 않는다 — 진짜 병합인 경우에만 상속하므로
- * 실제 입력 누락(진짜 빈 셀)과 병합 셀을 구분할 수 있다.
- */
-function resolvedValue(worksheet: ExcelJS.Worksheet, row: number, col: number): string | number | null {
-  const cell = worksheet.getCell(row, col);
-  const source = cell.isMerged ? cell.master : cell;
-  return toRawValue(source.value);
+function toNumberOrNull(value: ExcelJS.CellValue): number | null {
+  const raw = toRawValue(value);
+  if (raw === null || raw === '') return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
 }
 
 function findHeaderColumns(worksheet: ExcelJS.Worksheet): Record<ColumnKey, number> {
@@ -63,42 +57,49 @@ function findHeaderColumns(worksheet: ExcelJS.Worksheet): Record<ColumnKey, numb
 }
 
 /**
- * 표준 작업지시 Excel(.xlsx) 바이트를 읽어 RawWorkOrderRow[]로 만든다.
- * 기존 엑셀 양식을 바꾸도록 요구하지 않는다 — 헤더(구분/상품명/옵션명/정상가/행사가/딱지여부/비고)
- * 이름으로 컬럼을 찾고, 실제 merge range 정보(cell.isMerged/cell.master)로만 병합 셀을 상속한다.
+ * 표준 요청서(01_작업요청)를 읽어 RawWorkOrderRow[]로 만든다.
+ * 이 템플릿은 병합 셀을 쓰지 않으므로, 레거시 리더에 있던 merge 상속 로직이 필요 없다 —
+ * 셀 값을 그대로 읽으면 된다.
  */
 export async function readWorkOrderSheet(
   fileBytes: ArrayBuffer,
-  sheetName?: string,
+  sheetName = '01_작업요청',
 ): Promise<RawWorkOrderRow[]> {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(fileBytes);
 
-  const worksheet = sheetName ? workbook.getWorksheet(sheetName) : workbook.worksheets[0];
+  const worksheet = workbook.getWorksheet(sheetName);
   if (!worksheet) {
-    throw new Error(sheetName ? `시트 "${sheetName}"를 찾을 수 없습니다.` : '워크시트를 찾을 수 없습니다.');
+    throw new Error(`시트 "${sheetName}"를 찾을 수 없습니다.`);
   }
 
   const col = findHeaderColumns(worksheet);
 
   const rows: RawWorkOrderRow[] = [];
   for (let r = 2; r <= worksheet.rowCount; r++) {
-    const channelLabel = resolvedValue(worksheet, r, col.channel);
-    const productNameRaw = resolvedValue(worksheet, r, col.productName);
+    const workId = toRawValue(worksheet.getCell(r, col.workId).value);
+    const productName = toRawValue(worksheet.getCell(r, col.productName).value);
+    const productCode = toRawValue(worksheet.getCell(r, col.productCode).value);
+    const note = toRawValue(worksheet.getCell(r, col.note).value);
 
     const isBlankRow =
-      (channelLabel === null || channelLabel === '') && (productNameRaw === null || productNameRaw === '');
+      (workId === null || workId === '') &&
+      (productName === null || productName === '') &&
+      (productCode === null || productCode === '') &&
+      (note === null || note === '');
     if (isBlankRow) continue;
 
     rows.push({
-      rowIndex: r, // exceljs는 1-based이므로 엑셀 화면과 그대로 일치
-      channelLabel: String(channelLabel ?? '').trim(),
-      productNameRaw: String(productNameRaw ?? '').trim(),
-      optionNameRaw: String(resolvedValue(worksheet, r, col.optionName) ?? '').trim(),
-      regularPriceRaw: resolvedValue(worksheet, r, col.regularPrice),
-      eventPriceRaw: resolvedValue(worksheet, r, col.eventPrice),
-      badgeRaw: resolvedValue(worksheet, r, col.badge) as string | null,
-      noteRaw: resolvedValue(worksheet, r, col.note) as string | null,
+      rowIndex: r,
+      workId: String(workId ?? '').trim(),
+      seq: toNumberOrNull(worksheet.getCell(r, col.seq).value),
+      productGroup: String(toRawValue(worksheet.getCell(r, col.productGroup).value) ?? '').trim(),
+      channel: String(toRawValue(worksheet.getCell(r, col.channel).value) ?? '').trim(),
+      productName: String(productName ?? '').trim(),
+      productCode: String(productCode ?? '').trim(),
+      quantity: toNumberOrNull(worksheet.getCell(r, col.quantity).value),
+      badgeRaw: (toRawValue(worksheet.getCell(r, col.badge).value) as string | null) ?? null,
+      note: note === null || note === '' ? null : String(note).trim(),
     });
   }
 

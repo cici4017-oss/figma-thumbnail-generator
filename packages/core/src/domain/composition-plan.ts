@@ -1,5 +1,6 @@
 import type { LayoutSlotRole } from './layout';
 import type { ProductGroupId } from './product';
+import type { ThumbnailType } from './thumbnailType';
 
 export interface CompositionPlanSlot {
   slotKey: string;
@@ -12,6 +13,7 @@ export interface CompositionPlan {
   layoutKey: string;
   channelPresetId: string;
   productGroup: ProductGroupId;
+  thumbnailType: ThumbnailType;
   slots: CompositionPlanSlot[];
   options: {
     badge?: { enabled: boolean; label?: string };

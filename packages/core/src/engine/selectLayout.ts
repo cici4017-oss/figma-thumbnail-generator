@@ -1,5 +1,6 @@
 import type { AspectRatioFamily } from '../domain/channel';
 import type { ProductGroupId } from '../domain/product';
+import type { ThumbnailType } from '../domain/thumbnailType';
 import { type LayoutDefinition, getGiftSlotCount, getSaleSlotCount } from '../domain/layout';
 
 export interface LayoutSelectionCriteria {
@@ -11,6 +12,7 @@ export interface LayoutSelectionCriteria {
   giftQuantity: number;
   channelId: string;
   aspectRatioFamily: AspectRatioFamily;
+  thumbnailType: ThumbnailType;
 }
 
 export type SelectLayoutFailureReason =
@@ -59,6 +61,7 @@ export function selectLayout(
     if (m.compositions && !m.compositions.includes(criteria.composition)) return false;
     if (m.aspectRatioFamilies && !m.aspectRatioFamilies.includes(criteria.aspectRatioFamily)) return false;
     if (m.channelIds && !m.channelIds.includes(criteria.channelId)) return false;
+    if (m.thumbnailTypes && !m.thumbnailTypes.includes(criteria.thumbnailType)) return false;
     return true;
   });
 
@@ -66,7 +69,7 @@ export function selectLayout(
     return {
       ok: false,
       reason: 'NO_MATCHING_LAYOUT',
-      message: '슬롯 수는 일치하지만 productGroup/구성/aspectRatio/채널 조건을 만족하는 Layout이 없습니다.',
+      message: '슬롯 수는 일치하지만 productGroup/구성/aspectRatio/채널/썸네일유형 조건을 만족하는 Layout이 없습니다.',
       criteria,
     };
   }

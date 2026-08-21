@@ -1,5 +1,6 @@
 import type { ProductGroupId } from './product';
 import type { AspectRatioFamily } from './channel';
+import type { ThumbnailType } from './thumbnailType';
 
 export type ArrangementKind =
   | 'single-center'
@@ -28,6 +29,7 @@ export interface LayoutMatchCriteria {
   compositions?: Array<'single' | 'mixed'>;
   aspectRatioFamilies?: AspectRatioFamily[];
   channelIds?: string[];
+  thumbnailTypes?: ThumbnailType[];
 }
 
 export interface LayoutDefinition {

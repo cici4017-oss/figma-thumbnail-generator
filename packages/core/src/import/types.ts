@@ -1,96 +1,85 @@
+import type { ProductGroupId } from '../domain/product';
+
 export type RowStatus = 'valid' | 'reviewRequired' | 'error';
 
 export type WorkOrderIssueCode =
-  | 'AMBIGUOUS_CHANNEL_LABEL'
-  | 'PRODUCT_NAME_UNPARSEABLE'
-  | 'PRODUCT_NOT_MATCHED'
-  | 'PRODUCT_MATCHED_MULTIPLE'
-  | 'QUANTITY_UNRESOLVED'
+  | 'UNKNOWN_PRODUCT_GROUP'
+  | 'UNKNOWN_CHANNEL'
+  | 'UNKNOWN_PRODUCT_NAME'
+  | 'PRODUCT_CODE_MISSING'
+  | 'PRODUCT_GROUP_MISMATCH'
+  | 'INVALID_QUANTITY'
   | 'UNKNOWN_BADGE_VALUE'
-  | 'INVALID_PRICE'
+  | 'MISSING_SEQ'
+  | 'DUPLICATE_SEQ'
+  | 'MISSING_WORK_ID'
+  | 'INCONSISTENT_PRODUCT_GROUP'
+  | 'INCONSISTENT_CHANNEL'
+  | 'INCONSISTENT_BADGE'
   | 'HAS_NOTE';
 
 export interface WorkOrderIssue {
   code: WorkOrderIssueCode;
   message: string;
+  /** 특정 행에서 발생한 문제면 그 행 번호. 작업ID 그룹 전체에 대한 문제면 비어 있음. */
+  rowIndex?: number;
 }
 
-/** 라벨 하나가 가리키는 실제 채널. variantId는 "네이버(광고용)", "쿠팡위탁"처럼 동일 channelId의 하위 구분. */
-export interface ChannelTarget {
-  channelId: string;
-  variantId?: string;
-}
-
-/** Excel에서 그대로 읽어온 한 행 (병합 셀은 이미 상속 처리된 상태). */
+/** 표준 요청서(01_작업요청)에서 그대로 읽은 한 행. 병합 셀이 없으므로 상속 로직이 필요 없다. */
 export interface RawWorkOrderRow {
   rowIndex: number;
-  channelLabel: string;
-  productNameRaw: string;
-  optionNameRaw: string;
-  regularPriceRaw: string | number | null;
-  eventPriceRaw: string | number | null;
+  workId: string;
+  seq: number | null;
+  productGroup: string;
+  channel: string;
+  productName: string;
+  /** F열(상품코드) 수식의 계산 결과. 값이 비어 있으면 상품명이 상품목록에 없거나 수식이 깨진 것. */
+  productCode: string;
+  quantity: number | null;
   badgeRaw: string | null;
-  noteRaw: string | null;
-}
-
-/** 상품명 문자열 파싱 결과. assetKey는 여기서 만들지 않는다 — Product Resolver의 책임. */
-export interface ParsedProductName {
-  raw: string;
-  brand: string | null;
-  name: string | null;
-  capacity: string | null;
-  /** 상품명 자체에 있던 수량 후보. "N개" 하나면 [N], "N개/M개 골라담기"면 [N, M]. */
-  quantities: number[];
-  isChoiceListing: boolean;
-  /** 사람이 읽기 좋은 정규화 표기 ("본죽 메추리알 장조림 180g"). assetKey가 아님. */
-  normalizedLabel: string | null;
-}
-
-export interface ProductMatch {
-  assetKey: string | null;
-  matchedCount: number;
-}
-
-export interface QuantityResolution {
-  value: number | null;
-  source: 'productName' | 'optionName' | null;
-  isOverride: boolean;
+  note: string | null;
 }
 
 export interface WorkOrderLine {
   rowIndex: number;
+  seq: number | null;
+  productGroupLabel: string;
+  productGroup: ProductGroupId | null;
+  channelLabel: string;
+  channelId: string | null;
+  productName: string;
+  productCode: string | null;
+  quantity: number | null;
+  badge: boolean | null;
+  note: string | null;
+  issues: WorkOrderIssue[];
+}
+
+/** 작업ID(=썸네일 1개) 단위로 묶은 결과. 단일상품이면 lines가 1개, 혼합상품이면 여러 개. */
+export interface WorkOrder {
+  workId: string;
   status: RowStatus;
   issues: WorkOrderIssue[];
-
-  channel: {
-    label: string;
-    /** 0개=미해결, 1개=일반, 2개 이상=fanout(예: "옥션 지마켓" → auction + gmarket) */
-    targets: ChannelTarget[];
-  };
-
-  product: ParsedProductName;
-  productMatch: ProductMatch;
-
-  option: { raw: string; isOverride: boolean };
-  quantity: { value: number | null; source: 'productName' | 'optionName' | null };
-
+  productGroup: ProductGroupId | null;
+  channelId: string | null;
+  channelLabel: string | null;
   badge: boolean | null;
-  price: { regular: number | null; event: number | null };
-  note: { raw: string | null; presetCode: string | null };
+  composition: 'single' | 'mixed';
+  totalQuantity: number;
+  note: string | null;
+  lines: WorkOrderLine[];
 }
 
 export interface BatchSummary {
-  total: number;
+  totalWorkOrders: number;
   valid: number;
   reviewRequired: number;
   error: number;
-  /** channelId 또는 "channelId:variantId" 별 집계 */
-  byChannel: Record<string, number>;
 }
 
 export interface BatchGenerationRequest {
   sourceFileName: string;
   parsedAt: string;
-  lines: WorkOrderLine[];
+  workOrders: WorkOrder[];
   summary: BatchSummary;
 }
