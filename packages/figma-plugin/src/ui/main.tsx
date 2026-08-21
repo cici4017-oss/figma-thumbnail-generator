@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import { BatchPreview } from './BatchPreview';
 
 type PluginToUiMessage =
   | { type: 'products'; products: string[] }
@@ -11,7 +12,7 @@ function post(message: unknown) {
   parent.postMessage({ pluginMessage: message }, '*');
 }
 
-function App() {
+function PilotApp() {
   const [products, setProducts] = useState<string[]>([]);
   const [selectedProduct, setSelectedProduct] = useState('');
   const [quantity, setQuantity] = useState(3);
@@ -71,7 +72,7 @@ function App() {
   };
 
   return (
-    <div style={{ fontFamily: 'Inter, sans-serif', padding: 12, fontSize: 12 }}>
+    <div>
       <p style={{ marginTop: 0, fontWeight: 600 }}>LAYOUT_02 파일럿 · PRODUCT_ASSETS</p>
 
       <fieldset style={{ marginBottom: 16, border: '1px solid #ddd', borderRadius: 6, padding: 8 }}>
@@ -120,6 +121,53 @@ function App() {
       </fieldset>
 
       <p style={{ marginTop: 12, color: isError ? '#c0392b' : '#333' }}>{status}</p>
+    </div>
+  );
+}
+
+type Tab = 'pilot' | 'batch';
+
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        flex: 1,
+        padding: '8px 0',
+        border: 'none',
+        borderBottom: active ? '2px solid #18a0fb' : '2px solid transparent',
+        background: 'transparent',
+        fontWeight: active ? 600 : 400,
+        cursor: 'pointer',
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function App() {
+  const [tab, setTab] = useState<Tab>('pilot');
+
+  return (
+    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12 }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid #ddd' }}>
+        <TabButton active={tab === 'pilot'} onClick={() => setTab('pilot')}>
+          단건 생성 (파일럿)
+        </TabButton>
+        <TabButton active={tab === 'batch'} onClick={() => setTab('batch')}>
+          Excel 일괄 검증
+        </TabButton>
+      </div>
+      <div style={{ padding: 12 }}>{tab === 'pilot' ? <PilotApp /> : <BatchPreview />}</div>
     </div>
   );
 }

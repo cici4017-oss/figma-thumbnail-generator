@@ -9,7 +9,7 @@ import {
 import { renderPlan } from './renderer';
 import { listProductAssets, registerProductAssetFromSelection } from './assetResolver';
 
-figma.showUI(__html__, { width: 340, height: 440 });
+figma.showUI(__html__, { width: 460, height: 560 });
 
 /**
  * 이 플러그인 인스턴스가 열려 있는 "현재 파일"에 대한 설정.

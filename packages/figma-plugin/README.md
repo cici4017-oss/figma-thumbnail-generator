@@ -64,3 +64,21 @@ npm run build:plugin
   빌드/재로드하면, 결과 프레임이 생성되지 않고 오류 메시지만 뜨는지 확인할 수 있습니다.
 - `PRODUCT_ASSETS`에 아무것도 등록하지 않은 상태에서 "결과 프레임 생성"을 시도하면 목록이 비어 있어
   버튼이 비활성화되는지 확인합니다.
+
+## Excel 일괄 검증 탭 (신규)
+
+플러그인 UI 상단의 "Excel 일괄 검증" 탭에서 `templates/썸네일_자동화_요청서.xlsx` 형식의 파일을
+선택하면, `01_작업요청`을 작업ID 기준으로 묶어 정상(valid) / 검토필요(reviewRequired) / 오류(error)
+상태를 표로 보여줍니다. **아직 Figma 생성과는 연결되어 있지 않습니다** — 읽기·검증·미리보기까지만
+동작합니다.
+
+- 상품군/채널/딱지여부가 목록에 없거나, 같은 작업ID 안에서 서로 다르거나, 상품코드를 찾지
+  못하거나, 수량이 유효하지 않으면 `error`.
+- 비고가 있으면(등록된 문구인지와 무관하게) `reviewRequired`.
+- 위 문제가 전혀 없으면 `valid`.
+
+이 UI는 `@thumbnail-generator/core/import`(`readWorkOrderSheet`, `parseWorkOrderRows`)를 그대로
+사용합니다. Excel 파싱에 쓰는 `exceljs`는 UI(iframe) 번들에만 들어가고, Figma 메인 스레드
+번들(`code.ts` → `dist/code.js`)에는 포함되지 않도록 `@thumbnail-generator/core`의 메인 진입점과
+`./import` 서브패스를 분리해 두었습니다 — `code.ts`에서는 절대 `@thumbnail-generator/core/import`를
+import하지 마세요 (다시 code.js가 부풀어 오릅니다).
