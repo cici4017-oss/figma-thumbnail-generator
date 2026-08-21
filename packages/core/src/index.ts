@@ -14,6 +14,7 @@ export * from './data/channelPresets';
 export * from './data/layouts';
 export * from './data/channels';
 export * from './data/products';
+export * from './data/productAssetBindings';
 export * from './data/arrangementFamilyPolicy';
 
 // 주의: Excel 파싱 모듈(exceljs 포함)은 여기서 재수출하지 않는다.

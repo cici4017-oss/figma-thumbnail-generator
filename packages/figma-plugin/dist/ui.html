@@ -48352,6 +48352,34 @@
     { id: "jasondeal", label: "\uC81C\uC774\uC2A8\uB51C" }
   ];
 
+  // ../core/src/data/productAssetBindings.ts
+  var PRODUCT_ASSET_BINDINGS = [
+    {
+      productCode: "SIMPLE_BEEF_JANGJORIM_130",
+      assetKey: "SIMPLE_BEEF_JANGJORIM_130",
+      source: "code-fallback",
+      note: "Figma PRODUCT_ASSETS \uD398\uC774\uC9C0 \uB178\uB4DC \uBA85\uBA85 \uADDC\uCE59\uC774 \uD655\uC815\uB418\uBA74 \uC7AC\uD655\uC778 \uD544\uC694"
+    },
+    {
+      productCode: "SIMPLE_QUAIL_JANGJORIM_180",
+      assetKey: "SIMPLE_QUAIL_JANGJORIM_180",
+      source: "code-fallback",
+      note: "Figma PRODUCT_ASSETS \uD398\uC774\uC9C0 \uB178\uB4DC \uBA85\uBA85 \uADDC\uCE59\uC774 \uD655\uC815\uB418\uBA74 \uC7AC\uD655\uC778 \uD544\uC694"
+    },
+    {
+      productCode: "SIMPLE_CHIVE_KKOMAK_240",
+      assetKey: "SIMPLE_CHIVE_KKOMAK_240",
+      source: "code-fallback",
+      note: "Figma PRODUCT_ASSETS \uD398\uC774\uC9C0 \uB178\uB4DC \uBA85\uBA85 \uADDC\uCE59\uC774 \uD655\uC815\uB418\uBA74 \uC7AC\uD655\uC778 \uD544\uC694"
+    }
+    // BABY_BEEF_PORRIDGE_100 / BABY_PUMPKIN_PORRIDGE_100은 실제 상품명과 불일치하는 것으로
+    // 확인된 placeholder이므로 asset binding을 등록하지 않는다(=composePlan 대상에서 제외됨).
+  ];
+  function resolveProductAssetKey(productCode) {
+    var _a;
+    return (_a = PRODUCT_ASSET_BINDINGS.find((b) => b.productCode === productCode)) == null ? void 0 : _a.assetKey;
+  }
+
   // ../core/src/data/products.ts
   var PRODUCTS = [
     { code: "SIMPLE_BEEF_JANGJORIM_130", productGroup: "simple-meal", brand: "\uBCF8\uC8FD", name: "\uC18C\uACE0\uAE30\uC7A5\uC870\uB9BC", capacity: "130g" },
@@ -48361,9 +48389,13 @@
     { code: "BABY_PUMPKIN_PORRIDGE_100", productGroup: "baby-food", brand: "\uBCF8\uC8FD", name: "\uC774\uC720\uC2DD \uB2E8\uD638\uBC15\uC8FD", capacity: "100g" }
   ];
   function toDomainProduct(entry) {
-    return { id: entry.code, name: entry.name, productGroup: entry.productGroup, assetKey: entry.code };
+    const assetKey = resolveProductAssetKey(entry.code);
+    if (!assetKey) return null;
+    return { id: entry.code, name: entry.name, productGroup: entry.productGroup, assetKey };
   }
-  var DOMAIN_PRODUCTS = PRODUCTS.map(toDomainProduct);
+  var DOMAIN_PRODUCTS = PRODUCTS.map(toDomainProduct).filter(
+    (p) => p !== null
+  );
 
   // ../core/src/import/workOrderParser.ts
   var PRODUCT_GROUP_LABELS = {

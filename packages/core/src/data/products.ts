@@ -1,4 +1,5 @@
 import type { Product, ProductGroupId } from '../domain/product';
+import { resolveProductAssetKey } from './productAssetBindings';
 
 export interface ProductRegistryEntry {
   code: string;
@@ -22,12 +23,16 @@ export const PRODUCTS: ProductRegistryEntry[] = [
 
 /**
  * ProductRegistryEntry(Excel 상품목록 메타데이터) -> composePlan이 쓰는 도메인 Product 변환.
- * V1 mock/개발 단계 컨벤션: assetKey는 상품코드와 동일하다(PRODUCT_ASSETS 페이지의 노드 이름을
- * 상품코드로 등록하는 것을 전제). 실제 회사 Figma 적용 단계에서 이 컨벤션이 안 맞으면 여기서만
- * 바꾸면 된다.
+ * assetKey는 상품코드가 아니라 productAssetBindings.ts에 등록된 실제 asset 참조를 쓴다 —
+ * 상품코드와 asset 참조는 별개이므로, asset binding이 없는 상품은 도메인 Product로 변환하지
+ * 않는다(=아직 자동 생성 대상이 아님을 뜻한다. 임의로 상품코드를 assetKey로 대체하지 않는다).
  */
-export function toDomainProduct(entry: ProductRegistryEntry): Product {
-  return { id: entry.code, name: entry.name, productGroup: entry.productGroup, assetKey: entry.code };
+export function toDomainProduct(entry: ProductRegistryEntry): Product | null {
+  const assetKey = resolveProductAssetKey(entry.code);
+  if (!assetKey) return null;
+  return { id: entry.code, name: entry.name, productGroup: entry.productGroup, assetKey };
 }
 
-export const DOMAIN_PRODUCTS: Product[] = PRODUCTS.map(toDomainProduct);
+export const DOMAIN_PRODUCTS: Product[] = PRODUCTS.map(toDomainProduct).filter(
+  (p): p is Product => p !== null,
+);
