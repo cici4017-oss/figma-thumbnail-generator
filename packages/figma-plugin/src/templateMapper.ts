@@ -31,6 +31,16 @@ export interface FigmaTemplateBinding {
 }
 
 /**
+ * ⚠ PRODUCTION 전용 데이터 — 실제 회사 Figma 파일(프레임 "네이버_소고기장조림130_3" 등)을 가리킨다.
+ *
+ * 개발 단계에서는 이 바인딩이 실제로 동작하는 것을 전제로 하지 않는다: 회사 PC는 개발 중인
+ * 플러그인 파일을 자유롭게 반입할 수 없고, 회사 Figma 파일도 외부로 반출할 수 없기 때문이다.
+ * 로컬(집/외부) 개발·테스트는 src/mock의 mock Figma + mock 템플릿/에셋으로 한다
+ * (packages/figma-plugin/test/assetMapping.test.ts 참고, `npm run test`로 실행).
+ *
+ * 이 바인딩을 실제로 company Figma에서 실행하는 것은 개발 완료 후 별도의 승인/배포 단계에서만
+ * 이루어진다 — 자세한 내용은 저장소 루트 README.md의 "개발 단계 vs 배포 단계" 참고.
+ *
  * 파일럿 범위: LAYOUT_02 하나만 바인딩한다.
  * 레이어 이름(image 313 / image 409 / image 410)은 Figma MCP로 조사한 실제 값이다.
  */

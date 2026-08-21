@@ -21,6 +21,27 @@
 기존 Figma 디자인을 전혀 흐트러뜨리지 않고, 자동 생성 파이프라인(core.composePlan → templateMapper → renderer)이
 실제로 동작하는지 검증하는 최소 스모크 테스트입니다.
 
+## mock으로 검증하기 (기본 개발/테스트 방법)
+
+회사 Figma 파일/데스크톱 앱 없이, 아래 명령 하나로 templateMapper/renderer/assetResolver(에셋
+매핑 구조)를 자동 검증할 수 있습니다.
+
+```bash
+npm run test --workspace=@thumbnail-generator/figma-plugin
+```
+
+`src/mock/mockFigma.ts`가 실제 Figma 전역 API(`figma.*`)의 필요한 부분만 흉내낸 인메모리 구현이고,
+`src/mock/mockTemplate.ts`가 **실제 회사 파일과 같은 구조**(프레임 안에 이미지 슬롯 레이어 여러 개 +
+`PRODUCT_ASSETS` 페이지)를 갖되 이름/이미지는 전부 가짜인 mock 문서를 조립합니다.
+`renderer.ts`/`assetResolver.ts`는 이 테스트를 위해 코드를 전혀 바꾸지 않습니다 — 테스트 대상
+코드와 실제 배포 코드가 100% 동일합니다. `packages/figma-plugin/test/assetMapping.test.ts`가
+성공 케이스(3슬롯 채우기 + 원본 미변경) + 실패 케이스 2가지(레이어 없음, 미등록 asset)를 검증합니다.
+
+아래의 "Figma 데스크톱에서 로드하는 방법"은 **선택 사항**입니다 — 실제 화면에서 눈으로 확인하고
+싶을 때만 쓰고, 그때도 회사 파일이 아니라 개인 Figma 계정에 같은 구조로 만든 파일을 사용하세요.
+`FIGMA_TEMPLATE_BINDINGS`(templateMapper.ts)에 있는 실제 회사 프레임/레이어 이름은 개발 단계
+검증 대상이 아니라, 별도 승인을 거친 배포 단계에서만 실제로 사용됩니다.
+
 ## 파일럿 범위
 - Layout: `LAYOUT_02` (대표 frame: `네이버_소고기장조림130_3`, node `69:417`)
 - 상품: 1종 × 3개 구성만 지원
@@ -62,18 +83,24 @@ npm run build:plugin
 ```
 `packages/figma-plugin/dist/code.js`, `dist/ui.html`이 생성됩니다.
 
-## Figma 데스크톱에서 로드하는 방법
-> 이 저장소를 준비한 원격 환경에는 Figma 데스크톱 앱이 없어서, 실제 캔버스에서 clone/이미지 교체가
-> 동작하는지는 이 세션에서 직접 확인할 수 없습니다. 아래 절차로 **로컬에서** 확인해주세요.
+## Figma 데스크톱에서 로드하는 방법 (선택 사항 — 개인 Figma 계정)
 
-1. `https://www.figma.com/design/v6UalGGplex8w2hzfbqwhI/...` 파일을 Figma 데스크톱 앱으로 엽니다.
-2. `Plugins → Development → Import plugin from manifest...` 에서
+이 저장소를 준비한 원격 환경에는 Figma 데스크톱 앱이 없어서, 실제 캔버스에서 clone/이미지 교체가
+동작하는지는 이 세션에서 직접 확인할 수 없습니다. 자동 mock 테스트(위)로 로직은 이미 검증되므로
+이 절차는 필수가 아니지만, 눈으로 직접 보고 싶다면 **회사 파일이 아니라 개인 Figma 계정**에
+아래와 같은 구조의 프레임을 하나 만들어서 확인하세요:
+- 임의 이름의 FRAME 하나, 그 안에 이미지 fill이 있는 레이어 3개
+- `PRODUCT_ASSETS`라는 이름의 페이지, 그 안에 이미지 fill이 있는 노드 몇 개(각 노드 이름이 상품 키)
+
+그다음 `templateMapper.ts`의 `FIGMA_TEMPLATE_BINDINGS`를 그 프레임/레이어 이름에 맞게 임시로
+고쳐서 빌드하면(회사 값으로 되돌리는 것을 잊지 마세요), 아래 순서로 확인할 수 있습니다.
+
+1. `Plugins → Development → Import plugin from manifest...` 에서
    `packages/figma-plugin/manifest.json`을 선택합니다.
-3. 캔버스에서 `네이버_소고기장조림130_1` 프레임 안의 `image 312` 레이어(또는 다른 소고기장조림 이미지
-   레이어)를 선택 → 플러그인 UI에서 상품 키(예: `소고기장조림130g`) 입력 후 "선택한 레이어로 등록".
-4. 드롭다운에서 방금 등록한 상품을 선택, 수량 3 확인 후 "결과 프레임 생성" 클릭.
-5. `네이버_소고기장조림130_3` 원본 프레임 오른쪽에 `(자동생성 결과)` 프레임이 생기고,
-   3개 슬롯에 등록한 이미지가 채워지는지, 원본은 그대로인지 확인합니다.
+2. 캔버스에서 이미지가 있는 레이어를 선택 → 플러그인 UI에서 상품 키를 입력하고 "선택한 레이어로 등록".
+3. 드롭다운에서 방금 등록한 상품을 선택, 수량을 슬롯 수에 맞춰 확인 후 "결과 프레임 생성" 클릭.
+4. 원본 프레임 오른쪽에 `(자동생성 결과)` 프레임이 생기고, 슬롯에 등록한 이미지가 채워지는지,
+   원본은 그대로인지 확인합니다.
 
 ## 실패 케이스 확인 방법
 - 수량을 3이 아닌 값으로 바꿔서 생성 → `NO_LAYOUT_WITH_MATCHING_SLOT_COUNT` 오류가 뜨는지 확인 (fallback 없음 정책 검증).

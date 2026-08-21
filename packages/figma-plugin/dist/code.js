@@ -281,9 +281,9 @@
     );
     return byName && byName.type === "FRAME" ? byName : null;
   }
-  async function renderPlan(plan) {
+  async function renderPlan(plan, bindings = FIGMA_TEMPLATE_BINDINGS) {
     var _a;
-    const binding = resolveTemplate(plan.layoutKey, plan.channelPresetId);
+    const binding = resolveTemplate(plan.layoutKey, plan.channelPresetId, bindings);
     if (!binding) {
       return {
         ok: false,

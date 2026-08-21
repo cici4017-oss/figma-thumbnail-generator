@@ -1,6 +1,7 @@
 node_modules/
 dist/
 *.log
+.test-build/
 
 # 예외: 회사 PC에서 npm 빌드 없이 GitHub 웹 "Download ZIP" -> Figma에서
 # manifest.json Import만으로 바로 실행할 수 있도록, figma-plugin의 빌드 산출물만

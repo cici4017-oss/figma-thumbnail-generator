@@ -10,9 +10,14 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
+    "test": "node scripts/runTests.mjs",
     "generate:template": "node scripts/generateWorkOrderTemplate.mjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.23.1",
+    "@types/node": "^20.14.0"
   }
 }

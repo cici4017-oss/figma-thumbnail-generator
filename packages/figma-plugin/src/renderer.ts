@@ -1,5 +1,5 @@
 import type { CompositionPlan } from '@thumbnail-generator/core';
-import { resolveTemplate, type FigmaTemplateBinding } from './templateMapper';
+import { resolveTemplate, FIGMA_TEMPLATE_BINDINGS, type FigmaTemplateBinding } from './templateMapper';
 import { resolveProductAsset } from './assetResolver';
 
 export type RenderPlanResult = { ok: true; nodeId: string } | { ok: false; message: string };
@@ -23,9 +23,15 @@ function findTemplateFrame(binding: FigmaTemplateBinding): FrameNode | null {
  * - 원본 프레임(source of truth)은 절대 수정하지 않는다.
  * - 원본을 clone()해서 만든 새 프레임에만 이미지 슬롯을 교체한다.
  * - 슬롯 레이어/이미지 asset(PRODUCT_ASSETS 기반)을 찾지 못하면 임의로 진행하지 않고 즉시 실패를 반환한다.
+ *
+ * bindings를 생략하면 실제 회사 파일용 FIGMA_TEMPLATE_BINDINGS를 쓴다. 테스트에서는 mock 바인딩을
+ * 명시적으로 넘겨서, 회사 Figma 파일 없이도 이 함수를 그대로 검증할 수 있다(src/mock 참고).
  */
-export async function renderPlan(plan: CompositionPlan): Promise<RenderPlanResult> {
-  const binding = resolveTemplate(plan.layoutKey, plan.channelPresetId);
+export async function renderPlan(
+  plan: CompositionPlan,
+  bindings: FigmaTemplateBinding[] = FIGMA_TEMPLATE_BINDINGS,
+): Promise<RenderPlanResult> {
+  const binding = resolveTemplate(plan.layoutKey, plan.channelPresetId, bindings);
   if (!binding) {
     return {
       ok: false,
