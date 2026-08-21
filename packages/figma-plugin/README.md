@@ -1,5 +1,22 @@
 # 썸네일 자동생성 — 파일럿 (LAYOUT_02)
 
+## 빌드 없이 테스트하기 (회사 PC용 — GitHub 웹 ZIP)
+
+회사 PC에서 GitHub Desktop이나 로컬 npm 빌드를 쓰기 어려운 경우를 위해, `dist/code.js`,
+`dist/ui.html`(빌드 산출물)을 예외적으로 이 저장소에 커밋해 두었습니다. 아래 순서만으로
+빌드 없이 바로 Figma에서 플러그인을 실행할 수 있습니다.
+
+1. GitHub 웹에서 이 저장소의 해당 브랜치(`claude/figma-node-structure-rxlryu`) 페이지로 이동합니다.
+2. `Code` 버튼 → `Download ZIP` 클릭.
+3. 압축을 풉니다.
+4. Figma 데스크톱 앱에서 `Plugins → Development → Import plugin from manifest...` 선택 →
+   압축을 푼 폴더 안의 `packages/figma-plugin/manifest.json`을 선택합니다.
+5. 바로 실행됩니다. `npm install`, `npm run build` 등 아무것도 실행할 필요가 없습니다.
+
+**주의**: `dist/`는 소스가 바뀔 때마다 다시 빌드해서 커밋해야 최신 상태가 유지됩니다
+(이 저장소에서는 소스를 고칠 때마다 `npm run build:plugin`을 실행하고 `dist/`까지 함께
+커밋·푸시하는 것을 규칙으로 합니다). ZIP으로 받는 쪽에서 직접 `dist`를 만들 필요는 없습니다.
+
 ## 목적
 기존 Figma 디자인을 전혀 흐트러뜨리지 않고, 자동 생성 파이프라인(core.composePlan → templateMapper → renderer)이
 실제로 동작하는지 검증하는 최소 스모크 테스트입니다.

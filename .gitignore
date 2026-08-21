@@ -1,3 +1,10 @@
 node_modules/
 dist/
 *.log
+
+# 예외: 회사 PC에서 npm 빌드 없이 GitHub 웹 "Download ZIP" -> Figma에서
+# manifest.json Import만으로 바로 실행할 수 있도록, figma-plugin의 빌드 산출물만
+# repo에 커밋해 둔다. 소스를 고치면 반드시 `npm run build:plugin`을 다시 실행해서
+# 이 dist를 최신 상태로 커밋해야 한다 (안 그러면 ZIP으로 받는 쪽은 옛날 코드로 테스트하게 됨).
+!packages/figma-plugin/dist/
+!packages/figma-plugin/dist/**
