@@ -1,16 +1,20 @@
 export * from './domain/product';
 export * from './domain/channel';
 export * from './domain/thumbnailType';
+export * from './domain/layoutSource';
 export * from './domain/layout';
 export * from './domain/generation-request';
 export * from './domain/composition-plan';
 export * from './engine/selectLayout';
 export * from './engine/assignSlots';
+export * from './engine/generateFallbackLayout';
+export * from './engine/resolveLayout';
 export * from './engine/composePlan';
 export * from './data/channelPresets';
 export * from './data/layouts';
 export * from './data/channels';
 export * from './data/products';
+export * from './data/arrangementFamilyPolicy';
 
 // 주의: Excel 파싱 모듈(exceljs 포함)은 여기서 재수출하지 않는다.
 // code.ts(Figma 메인 스레드)처럼 Excel을 다루지 않는 소비자가 '@thumbnail-generator/core'를

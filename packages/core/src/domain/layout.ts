@@ -1,6 +1,7 @@
 import type { ProductGroupId } from './product';
 import type { AspectRatioFamily } from './channel';
 import type { ThumbnailType } from './thumbnailType';
+import type { LayoutSource } from './layoutSource';
 
 export type ArrangementKind =
   | 'single-center'
@@ -13,7 +14,12 @@ export type ArrangementKind =
   | 'dense-grid-20'
   | 'duo-side-by-side'
   | 'duo-gift-overlay'
-  | 'lifestyle-scene';
+  | 'lifestyle-scene'
+  /** generated fallback family (arrangementFamilyPolicy.ts) 공식이 생성하는 배치 종류 */
+  | 'row-linear'
+  | 'diagonal-cascade'
+  | 'pyramid-stack'
+  | 'grid-cluster';
 
 /** 판매수량에 포함되는 슬롯인지(sale) 아니면 별도 증정품 슬롯인지(gift) */
 export type LayoutSlotRole = 'sale' | 'gift';
@@ -39,6 +45,8 @@ export interface LayoutDefinition {
   match: LayoutMatchCriteria;
   /** 여러 Layout이 동시에 match될 때 우선순위. 숫자가 클수록 우선. */
   priority: number;
+  /** 실제 Figma에서 검증된 Layout인지, family 공식으로 자동 생성된 Layout인지. */
+  source: LayoutSource;
 }
 
 export function getSaleSlotCount(layout: LayoutDefinition): number {

@@ -92,6 +92,88 @@
     };
   }
 
+  // ../core/src/data/arrangementFamilyPolicy.ts
+  var MAX_GENERATED_SLOT_COUNT = 20;
+  var ARRANGEMENT_FAMILY_POLICY = [
+    { familyId: "single-center", minSlotCount: 1, maxSlotCount: 1 },
+    { familyId: "row-linear", minSlotCount: 2, maxSlotCount: 3 },
+    { familyId: "diagonal-cascade", minSlotCount: 4, maxSlotCount: 5 },
+    { familyId: "pyramid-stack", minSlotCount: 6, maxSlotCount: 10 },
+    { familyId: "grid-cluster", minSlotCount: 11, maxSlotCount: MAX_GENERATED_SLOT_COUNT }
+  ];
+  function resolveArrangementFamily(slotCount) {
+    return ARRANGEMENT_FAMILY_POLICY.find(
+      (r) => slotCount >= r.minSlotCount && slotCount <= r.maxSlotCount
+    );
+  }
+
+  // ../core/src/engine/generateFallbackLayout.ts
+  function generateFallbackLayout(input) {
+    if (input.slotCount > MAX_GENERATED_SLOT_COUNT) {
+      return {
+        ok: false,
+        reason: "SLOT_COUNT_EXCEEDS_GENERATED_LIMIT",
+        message: `\uC2AC\uB86F \uC218 ${input.slotCount}\uAC1C\uB294 generated fallback\uC758 V1 \uCD5C\uB300\uCE58(${MAX_GENERATED_SLOT_COUNT}\uAC1C)\uB97C \uCD08\uACFC\uD569\uB2C8\uB2E4.`
+      };
+    }
+    const range = resolveArrangementFamily(input.slotCount);
+    if (!range) {
+      return {
+        ok: false,
+        reason: "NO_ARRANGEMENT_FAMILY_FOR_SLOT_COUNT",
+        message: `\uC2AC\uB86F \uC218 ${input.slotCount}\uAC1C\uC5D0 \uB300\uC751\uD558\uB294 \uBC30\uCE58 family\uAC00 \uC815\uCC45 \uB370\uC774\uD130(arrangementFamilyPolicy)\uC5D0 \uC815\uC758\uB418\uC5B4 \uC788\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.`
+      };
+    }
+    const slots = Array.from({ length: input.slotCount }, (_, i) => ({
+      slotKey: `slot_${i + 1}`,
+      role: "sale"
+    }));
+    return {
+      ok: true,
+      layout: {
+        layoutKey: `GENERATED_${range.familyId.toUpperCase()}_${input.slotCount}`,
+        arrangementKind: range.familyId,
+        slots,
+        // generated layout은 selectLayout으로 검색되지 않고 resolveLayout이 직접 생성해서
+        // 반환하므로 match 조건이 필요 없다.
+        match: {},
+        priority: 0,
+        source: { kind: "generated", params: { familyId: range.familyId, slotCount: input.slotCount } }
+      }
+    };
+  }
+
+  // ../core/src/engine/resolveLayout.ts
+  function resolveLayout(criteria, layouts) {
+    const verifiedLayouts = layouts.filter((l) => l.source.kind === "verified");
+    const selection = selectLayout(criteria, verifiedLayouts);
+    if (selection.ok) {
+      return { status: "resolved", layout: selection.layout };
+    }
+    if (selection.reason === "AMBIGUOUS_LAYOUT_MATCH") {
+      return { status: "error", reason: "AMBIGUOUS_LAYOUT_MATCH", message: selection.message };
+    }
+    if (criteria.giftQuantity > 0) {
+      return {
+        status: "reviewRequired",
+        reason: "GIFT_NO_VERIFIED_LAYOUT",
+        message: "\uC99D\uC815\uD488\uC774 \uD3EC\uD568\uB41C \uC694\uCCAD\uC740 \uAC80\uC99D\uB41C(verified) Layout\uC774 \uC788\uC744 \uB54C\uB9CC \uC790\uB3D9 \uC0DD\uC131\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4. \uD574\uB2F9 \uC2AC\uB86F \uAD6C\uC131\uC758 \uAC80\uC99D\uB41C Layout\uC774 \uC5C6\uC5B4 \uAC80\uD1A0\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4."
+      };
+    }
+    if (criteria.thumbnailType === "staged") {
+      return {
+        status: "reviewRequired",
+        reason: "STAGED_NO_VERIFIED_LAYOUT",
+        message: "staged \uC378\uB124\uC77C\uC740 \uAC80\uC99D\uB41C(verified) Layout\uB9CC \uC0AC\uC6A9\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4(\uC790\uB3D9 \uC0DD\uC131 \uAE08\uC9C0). \uD574\uB2F9 \uC2AC\uB86F \uAD6C\uC131\uC758 \uAC80\uC99D\uB41C Layout\uC774 \uC5C6\uC5B4 \uAC80\uD1A0\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4."
+      };
+    }
+    const fallback = generateFallbackLayout({ slotCount: criteria.totalQuantity });
+    if (!fallback.ok) {
+      return { status: "error", reason: fallback.reason, message: fallback.message };
+    }
+    return { status: "resolved", layout: fallback.layout };
+  }
+
   // ../core/src/engine/composePlan.ts
   function expandItems(items) {
     const out = [];
@@ -106,19 +188,30 @@
     if (!channelPreset) {
       return {
         ok: false,
+        reviewRequired: false,
         reason: "CHANNEL_PRESET_NOT_FOUND",
         message: `channelPresetId "${request.channelPresetId}"\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`
       };
     }
     if (request.items.length === 0) {
-      return { ok: false, reason: "EMPTY_ITEMS", message: "\uD310\uB9E4 \uC0C1\uD488 \uD56D\uBAA9(items)\uC774 \uBE44\uC5B4 \uC788\uC2B5\uB2C8\uB2E4." };
+      return {
+        ok: false,
+        reviewRequired: false,
+        reason: "EMPTY_ITEMS",
+        message: "\uD310\uB9E4 \uC0C1\uD488 \uD56D\uBAA9(items)\uC774 \uBE44\uC5B4 \uC788\uC2B5\uB2C8\uB2E4."
+      };
     }
     const saleProductIds = expandItems(request.items);
     const giftProductIds = expandItems((_a = request.giftItems) != null ? _a : []);
     const productLookup = new Map(deps.products.map((p) => [p.id, p]));
     for (const id of [...saleProductIds, ...giftProductIds]) {
       if (!productLookup.has(id)) {
-        return { ok: false, reason: "PRODUCT_NOT_FOUND", message: `productId "${id}"\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.` };
+        return {
+          ok: false,
+          reviewRequired: false,
+          reason: "PRODUCT_NOT_FOUND",
+          message: `productId "${id}"\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`
+        };
       }
     }
     const groups = new Set(
@@ -127,6 +220,7 @@
     if (groups.size > 1) {
       return {
         ok: false,
+        reviewRequired: false,
         reason: "INCONSISTENT_PRODUCT_GROUP",
         message: `\uC694\uCCAD\uC5D0 \uC11C\uB85C \uB2E4\uB978 productGroup\uC774 \uC11E\uC5EC \uC788\uC2B5\uB2C8\uB2E4: ${[...groups].join(", ")}`
       };
@@ -134,7 +228,7 @@
     const productGroup = [...groups][0];
     const composition = new Set(request.items.map((i) => i.productId)).size > 1 ? "mixed" : "single";
     const thumbnailType = (_b = request.thumbnailType) != null ? _b : DEFAULT_THUMBNAIL_TYPE;
-    const selection = selectLayout(
+    const resolution = resolveLayout(
       {
         productGroup,
         composition,
@@ -146,25 +240,35 @@
       },
       deps.layouts
     );
-    if (!selection.ok) {
-      return { ok: false, reason: selection.reason, message: selection.message };
+    if (resolution.status === "error") {
+      return { ok: false, reviewRequired: false, reason: resolution.reason, message: resolution.message };
     }
+    if (resolution.status === "reviewRequired") {
+      return { ok: false, reviewRequired: true, reason: resolution.reason, message: resolution.message };
+    }
+    const layout = resolution.layout;
     const assignment = assignSlots({
-      layout: selection.layout,
+      layout,
       saleAssetKeys: saleProductIds.map((id) => productLookup.get(id).assetKey),
       giftAssetKeys: giftProductIds.map((id) => productLookup.get(id).assetKey)
     });
     if (!assignment.ok) {
-      return { ok: false, reason: assignment.reason, message: assignment.message };
+      return { ok: false, reviewRequired: false, reason: assignment.reason, message: assignment.message };
     }
+    const generatedLayout = layout.source.kind === "generated";
     return {
       ok: true,
       plan: {
-        layoutKey: selection.layout.layoutKey,
+        layoutKey: layout.layoutKey,
         channelPresetId: channelPreset.id,
         productGroup,
         thumbnailType,
         slots: assignment.slots,
+        layoutSource: layout.source,
+        generatedLayout,
+        // generated fallback으로 만들어진 plan은 향후 AUTO_GENERATED_REVIEW 같은 별도
+        // 검토 영역으로 보내야 하므로 항상 reviewRequired=true로 표시한다.
+        reviewRequired: generatedLayout,
         options: {
           badge: (_c = request.options) == null ? void 0 : _c.badge,
           storageLabel: (_d = request.options) == null ? void 0 : _d.storageLabel,
@@ -203,7 +307,8 @@
         aspectRatioFamilies: ["square"],
         thumbnailTypes: ["basic"]
       },
-      priority: 100
+      priority: 100,
+      source: { kind: "verified" }
     }
   ];
 

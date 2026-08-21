@@ -8,6 +8,7 @@ const layouts: LayoutDefinition[] = [
     slots: [{ slotKey: 'slot_1', role: 'sale' }],
     match: { aspectRatioFamilies: ['square'], thumbnailTypes: ['basic'] },
     priority: 10,
+    source: { kind: 'verified' },
   },
   {
     layoutKey: 'L_SINGLE_STAGED',
@@ -15,6 +16,7 @@ const layouts: LayoutDefinition[] = [
     slots: [{ slotKey: 'slot_1', role: 'sale' }],
     match: { aspectRatioFamilies: ['square'], thumbnailTypes: ['staged'] },
     priority: 10,
+    source: { kind: 'verified' },
   },
   {
     layoutKey: 'L_TRIPLE',
@@ -26,6 +28,7 @@ const layouts: LayoutDefinition[] = [
     ],
     match: { aspectRatioFamilies: ['square'] },
     priority: 10,
+    source: { kind: 'verified' },
   },
   // L_TRIPLE과 동일한 슬롯 수·priority인 경쟁 레이아웃 (ambiguous 테스트용)
   {
@@ -38,6 +41,7 @@ const layouts: LayoutDefinition[] = [
     ],
     match: { aspectRatioFamilies: ['square'] },
     priority: 10,
+    source: { kind: 'verified' },
   },
 ];
 

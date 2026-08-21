@@ -21,5 +21,6 @@ export const LAYOUTS: LayoutDefinition[] = [
       thumbnailTypes: ['basic'],
     },
     priority: 100,
+    source: { kind: 'verified' },
   },
 ];

@@ -8,6 +8,7 @@ function layoutWithSaleSlots(count: number, extra: Partial<LayoutDefinition> = {
     slots: Array.from({ length: count }, (_, i) => ({ slotKey: `slot_${i + 1}`, role: 'sale' as const })),
     match: {},
     priority: 0,
+    source: { kind: 'verified' },
     ...extra,
   };
 }
@@ -65,6 +66,7 @@ function layoutWithSaleSlots(count: number, extra: Partial<LayoutDefinition> = {
     ],
     match: {},
     priority: 0,
+    source: { kind: 'verified' },
   };
   const result = assignSlots({ layout, saleAssetKeys: ['A', 'B'], giftAssetKeys: ['G'] });
   assert.equal(result.ok, true);
@@ -97,6 +99,7 @@ function layoutWithSaleSlots(count: number, extra: Partial<LayoutDefinition> = {
     ],
     match: {},
     priority: 0,
+    source: { kind: 'verified' },
   };
   const result = assignSlots({ layout, saleAssetKeys: ['first', 'second', 'third'], giftAssetKeys: [] });
   assert.equal(result.ok, true);
