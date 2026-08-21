@@ -55,6 +55,43 @@
     return { ok: true, layout: topLayouts[0] };
   }
 
+  // ../core/src/engine/assignSlots.ts
+  function slotOrderKey(slotKey) {
+    const match = slotKey.match(/(\d+)\s*$/);
+    return match ? Number(match[1]) : Number.POSITIVE_INFINITY;
+  }
+  function slotsForRole(layout, role) {
+    return layout.slots.filter((s) => s.role === role).sort((a, b) => slotOrderKey(a.slotKey) - slotOrderKey(b.slotKey));
+  }
+  function fillSlots(slots, assetKeys, role) {
+    return slots.map((slot, i) => ({ slotKey: slot.slotKey, assetKey: assetKeys[i], role }));
+  }
+  function assignSlots(input) {
+    const saleSlots = slotsForRole(input.layout, "sale");
+    const giftSlots = slotsForRole(input.layout, "gift");
+    if (saleSlots.length !== input.saleAssetKeys.length) {
+      return {
+        ok: false,
+        reason: "SALE_SLOT_COUNT_MISMATCH",
+        message: `Layout "${input.layout.layoutKey}"\uC758 \uD310\uB9E4 \uC2AC\uB86F \uC218(${saleSlots.length})\uC640 \uC2E4\uC81C \uD310\uB9E4 \uC0C1\uD488 \uC218(${input.saleAssetKeys.length})\uAC00 \uC815\uD655\uD788 \uC77C\uCE58\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. (\uC77C\uBD80\uB9CC \uCC44\uC6B0\uAC70\uB098 \uACB9\uCCD0 \uB123\uB294 \uB4F1\uC758 \uB300\uCCB4 \uCC98\uB9AC\uB294 \uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4)`
+      };
+    }
+    if (giftSlots.length !== input.giftAssetKeys.length) {
+      return {
+        ok: false,
+        reason: "GIFT_SLOT_COUNT_MISMATCH",
+        message: `Layout "${input.layout.layoutKey}"\uC758 \uC99D\uC815 \uC2AC\uB86F \uC218(${giftSlots.length})\uC640 \uC2E4\uC81C \uC99D\uC815 \uC0C1\uD488 \uC218(${input.giftAssetKeys.length})\uAC00 \uC815\uD655\uD788 \uC77C\uCE58\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.`
+      };
+    }
+    return {
+      ok: true,
+      slots: [
+        ...fillSlots(saleSlots, input.saleAssetKeys, "sale"),
+        ...fillSlots(giftSlots, input.giftAssetKeys, "gift")
+      ]
+    };
+  }
+
   // ../core/src/engine/composePlan.ts
   function expandItems(items) {
     const out = [];
@@ -112,24 +149,14 @@
     if (!selection.ok) {
       return { ok: false, reason: selection.reason, message: selection.message };
     }
-    const saleSlots = selection.layout.slots.filter((s) => s.role === "sale");
-    const giftSlots = selection.layout.slots.filter((s) => s.role === "gift");
-    const slots = [
-      ...saleSlots.map(
-        (slot, i) => ({
-          slotKey: slot.slotKey,
-          assetKey: productLookup.get(saleProductIds[i]).assetKey,
-          role: "sale"
-        })
-      ),
-      ...giftSlots.map(
-        (slot, i) => ({
-          slotKey: slot.slotKey,
-          assetKey: productLookup.get(giftProductIds[i]).assetKey,
-          role: "gift"
-        })
-      )
-    ];
+    const assignment = assignSlots({
+      layout: selection.layout,
+      saleAssetKeys: saleProductIds.map((id) => productLookup.get(id).assetKey),
+      giftAssetKeys: giftProductIds.map((id) => productLookup.get(id).assetKey)
+    });
+    if (!assignment.ok) {
+      return { ok: false, reason: assignment.reason, message: assignment.message };
+    }
     return {
       ok: true,
       plan: {
@@ -137,7 +164,7 @@
         channelPresetId: channelPreset.id,
         productGroup,
         thumbnailType,
-        slots,
+        slots: assignment.slots,
         options: {
           badge: (_c = request.options) == null ? void 0 : _c.badge,
           storageLabel: (_d = request.options) == null ? void 0 : _d.storageLabel,

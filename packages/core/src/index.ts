@@ -5,6 +5,7 @@ export * from './domain/layout';
 export * from './domain/generation-request';
 export * from './domain/composition-plan';
 export * from './engine/selectLayout';
+export * from './engine/assignSlots';
 export * from './engine/composePlan';
 export * from './data/channelPresets';
 export * from './data/layouts';

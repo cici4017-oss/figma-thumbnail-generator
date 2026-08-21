@@ -2,12 +2,14 @@ import type { Product } from '../domain/product';
 import type { ChannelPreset } from '../domain/channel';
 import type { LayoutDefinition } from '../domain/layout';
 import type { GenerationRequest, GenerationRequestItem } from '../domain/generation-request';
-import type { CompositionPlan, CompositionPlanSlot } from '../domain/composition-plan';
+import type { CompositionPlan } from '../domain/composition-plan';
 import { DEFAULT_THUMBNAIL_TYPE } from '../domain/thumbnailType';
 import { selectLayout, type SelectLayoutFailureReason } from './selectLayout';
+import { assignSlots, type AssignSlotsFailureReason } from './assignSlots';
 
 export type ComposePlanFailureReason =
   | SelectLayoutFailureReason
+  | AssignSlotsFailureReason
   | 'PRODUCT_NOT_FOUND'
   | 'CHANNEL_PRESET_NOT_FOUND'
   | 'INCONSISTENT_PRODUCT_GROUP'
@@ -86,25 +88,18 @@ export function composePlan(
     return { ok: false, reason: selection.reason, message: selection.message };
   }
 
-  const saleSlots = selection.layout.slots.filter((s) => s.role === 'sale');
-  const giftSlots = selection.layout.slots.filter((s) => s.role === 'gift');
+  // 상품→슬롯 배치는 selectLayout의 책임이 아니라 assignSlots의 책임이다.
+  // saleProductIds/giftProductIds는 이미 "작업ID 내 순번 오름차순 × quantity만큼 expand"된
+  // 상태(items 배열 순서를 그대로 따름)이므로, 여기서는 재정렬 없이 그대로 넘긴다.
+  const assignment = assignSlots({
+    layout: selection.layout,
+    saleAssetKeys: saleProductIds.map((id) => productLookup.get(id)!.assetKey),
+    giftAssetKeys: giftProductIds.map((id) => productLookup.get(id)!.assetKey),
+  });
 
-  const slots: CompositionPlanSlot[] = [
-    ...saleSlots.map(
-      (slot, i): CompositionPlanSlot => ({
-        slotKey: slot.slotKey,
-        assetKey: productLookup.get(saleProductIds[i])!.assetKey,
-        role: 'sale',
-      }),
-    ),
-    ...giftSlots.map(
-      (slot, i): CompositionPlanSlot => ({
-        slotKey: slot.slotKey,
-        assetKey: productLookup.get(giftProductIds[i])!.assetKey,
-        role: 'gift',
-      }),
-    ),
-  ];
+  if (!assignment.ok) {
+    return { ok: false, reason: assignment.reason, message: assignment.message };
+  }
 
   return {
     ok: true,
@@ -113,7 +108,7 @@ export function composePlan(
       channelPresetId: channelPreset.id,
       productGroup,
       thumbnailType,
-      slots,
+      slots: assignment.slots,
       options: {
         badge: request.options?.badge,
         storageLabel: request.options?.storageLabel,
