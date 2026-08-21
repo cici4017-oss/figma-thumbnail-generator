@@ -312,6 +312,19 @@
     }
   ];
 
+  // ../core/src/data/products.ts
+  var PRODUCTS = [
+    { code: "SIMPLE_BEEF_JANGJORIM_130", productGroup: "simple-meal", brand: "\uBCF8\uC8FD", name: "\uC18C\uACE0\uAE30\uC7A5\uC870\uB9BC", capacity: "130g" },
+    { code: "SIMPLE_QUAIL_JANGJORIM_180", productGroup: "simple-meal", brand: "\uBCF8\uC8FD", name: "\uBA54\uCD94\uB9AC\uC54C \uC7A5\uC870\uB9BC", capacity: "180g" },
+    { code: "SIMPLE_CHIVE_KKOMAK_240", productGroup: "simple-meal", brand: "\uBCF8\uC8FD", name: "\uBD80\uCD94 \uAF2C\uB9C9\uBB34\uCE68", capacity: "240g" },
+    { code: "BABY_BEEF_PORRIDGE_100", productGroup: "baby-food", brand: "\uBCF8\uC8FD", name: "\uC774\uC720\uC2DD \uC18C\uACE0\uAE30\uC8FD", capacity: "100g" },
+    { code: "BABY_PUMPKIN_PORRIDGE_100", productGroup: "baby-food", brand: "\uBCF8\uC8FD", name: "\uC774\uC720\uC2DD \uB2E8\uD638\uBC15\uC8FD", capacity: "100g" }
+  ];
+  function toDomainProduct(entry) {
+    return { id: entry.code, name: entry.name, productGroup: entry.productGroup, assetKey: entry.code };
+  }
+  var DOMAIN_PRODUCTS = PRODUCTS.map(toDomainProduct);
+
   // src/templateMapper.ts
   var FIGMA_TEMPLATE_BINDINGS = [
     {

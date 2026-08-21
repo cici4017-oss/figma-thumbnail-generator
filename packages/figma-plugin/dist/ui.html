@@ -48360,6 +48360,10 @@
     { code: "BABY_BEEF_PORRIDGE_100", productGroup: "baby-food", brand: "\uBCF8\uC8FD", name: "\uC774\uC720\uC2DD \uC18C\uACE0\uAE30\uC8FD", capacity: "100g" },
     { code: "BABY_PUMPKIN_PORRIDGE_100", productGroup: "baby-food", brand: "\uBCF8\uC8FD", name: "\uC774\uC720\uC2DD \uB2E8\uD638\uBC15\uC8FD", capacity: "100g" }
   ];
+  function toDomainProduct(entry) {
+    return { id: entry.code, name: entry.name, productGroup: entry.productGroup, assetKey: entry.code };
+  }
+  var DOMAIN_PRODUCTS = PRODUCTS.map(toDomainProduct);
 
   // ../core/src/import/workOrderParser.ts
   var PRODUCT_GROUP_LABELS = {
@@ -48564,22 +48568,425 @@
     };
   }
 
+  // ../core/src/data/channelPresets.ts
+  var CHANNEL_PRESETS = [
+    {
+      id: "naver-1000x1000",
+      channelId: "naver",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      storageLabelSupported: true,
+      badgeSupported: true
+    }
+  ];
+
+  // ../core/src/data/layouts.ts
+  var LAYOUTS = [
+    {
+      layoutKey: "LAYOUT_02",
+      arrangementKind: "triple-cascade",
+      slots: [
+        { slotKey: "slot_1", role: "sale" },
+        { slotKey: "slot_2", role: "sale" },
+        { slotKey: "slot_3", role: "sale" }
+      ],
+      match: {
+        productGroups: ["simple-meal"],
+        compositions: ["single", "mixed"],
+        aspectRatioFamilies: ["square"],
+        thumbnailTypes: ["basic"]
+      },
+      priority: 100,
+      source: { kind: "verified" }
+    }
+  ];
+
+  // ../core/src/domain/thumbnailType.ts
+  var DEFAULT_THUMBNAIL_TYPE = "basic";
+
+  // ../core/src/engine/assignSlots.ts
+  function slotOrderKey(slotKey) {
+    const match = slotKey.match(/(\d+)\s*$/);
+    return match ? Number(match[1]) : Number.POSITIVE_INFINITY;
+  }
+  function slotsForRole(layout, role) {
+    return layout.slots.filter((s) => s.role === role).sort((a, b) => slotOrderKey(a.slotKey) - slotOrderKey(b.slotKey));
+  }
+  function fillSlots(slots, assetKeys, role) {
+    return slots.map((slot, i) => ({ slotKey: slot.slotKey, assetKey: assetKeys[i], role }));
+  }
+  function assignSlots(input) {
+    const saleSlots = slotsForRole(input.layout, "sale");
+    const giftSlots = slotsForRole(input.layout, "gift");
+    if (saleSlots.length !== input.saleAssetKeys.length) {
+      return {
+        ok: false,
+        reason: "SALE_SLOT_COUNT_MISMATCH",
+        message: `Layout "${input.layout.layoutKey}"\uC758 \uD310\uB9E4 \uC2AC\uB86F \uC218(${saleSlots.length})\uC640 \uC2E4\uC81C \uD310\uB9E4 \uC0C1\uD488 \uC218(${input.saleAssetKeys.length})\uAC00 \uC815\uD655\uD788 \uC77C\uCE58\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. (\uC77C\uBD80\uB9CC \uCC44\uC6B0\uAC70\uB098 \uACB9\uCCD0 \uB123\uB294 \uB4F1\uC758 \uB300\uCCB4 \uCC98\uB9AC\uB294 \uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4)`
+      };
+    }
+    if (giftSlots.length !== input.giftAssetKeys.length) {
+      return {
+        ok: false,
+        reason: "GIFT_SLOT_COUNT_MISMATCH",
+        message: `Layout "${input.layout.layoutKey}"\uC758 \uC99D\uC815 \uC2AC\uB86F \uC218(${giftSlots.length})\uC640 \uC2E4\uC81C \uC99D\uC815 \uC0C1\uD488 \uC218(${input.giftAssetKeys.length})\uAC00 \uC815\uD655\uD788 \uC77C\uCE58\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.`
+      };
+    }
+    return {
+      ok: true,
+      slots: [
+        ...fillSlots(saleSlots, input.saleAssetKeys, "sale"),
+        ...fillSlots(giftSlots, input.giftAssetKeys, "gift")
+      ]
+    };
+  }
+
+  // ../core/src/domain/layout.ts
+  function getSaleSlotCount(layout) {
+    return layout.slots.filter((s) => s.role === "sale").length;
+  }
+  function getGiftSlotCount(layout) {
+    return layout.slots.filter((s) => s.role === "gift").length;
+  }
+
+  // ../core/src/engine/selectLayout.ts
+  function selectLayout(criteria, layouts) {
+    const slotCountMatches = layouts.filter(
+      (l) => getSaleSlotCount(l) === criteria.totalQuantity && getGiftSlotCount(l) === criteria.giftQuantity
+    );
+    if (slotCountMatches.length === 0) {
+      return {
+        ok: false,
+        reason: "NO_LAYOUT_WITH_MATCHING_SLOT_COUNT",
+        message: `\uD310\uB9E4\uC218\uB7C9 ${criteria.totalQuantity}\uAC1C` + (criteria.giftQuantity > 0 ? ` + \uC99D\uC815 ${criteria.giftQuantity}\uAC1C` : "") + `\uC640 \uC2AC\uB86F \uC218\uAC00 \uC815\uD655\uD788 \uC77C\uCE58\uD558\uB294 Layout\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. (\uCD95\uC18C\xB7\uC0DD\uB7B5\xB7\uC21C\uD658\uBC30\uCE58 \uB4F1\uC758 \uB300\uCCB4 \uCC98\uB9AC\uB294 \uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4)`,
+        criteria
+      };
+    }
+    const criteriaMatches = slotCountMatches.filter((l) => {
+      const m = l.match;
+      if (m.productGroups && !m.productGroups.includes(criteria.productGroup)) return false;
+      if (m.compositions && !m.compositions.includes(criteria.composition)) return false;
+      if (m.aspectRatioFamilies && !m.aspectRatioFamilies.includes(criteria.aspectRatioFamily)) return false;
+      if (m.channelIds && !m.channelIds.includes(criteria.channelId)) return false;
+      if (m.thumbnailTypes && !m.thumbnailTypes.includes(criteria.thumbnailType)) return false;
+      return true;
+    });
+    if (criteriaMatches.length === 0) {
+      return {
+        ok: false,
+        reason: "NO_MATCHING_LAYOUT",
+        message: "\uC2AC\uB86F \uC218\uB294 \uC77C\uCE58\uD558\uC9C0\uB9CC productGroup/\uAD6C\uC131/aspectRatio/\uCC44\uB110/\uC378\uB124\uC77C\uC720\uD615 \uC870\uAC74\uC744 \uB9CC\uC871\uD558\uB294 Layout\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.",
+        criteria
+      };
+    }
+    const maxPriority = Math.max(...criteriaMatches.map((l) => l.priority));
+    const topLayouts = criteriaMatches.filter((l) => l.priority === maxPriority);
+    if (topLayouts.length > 1) {
+      return {
+        ok: false,
+        reason: "AMBIGUOUS_LAYOUT_MATCH",
+        message: `\uB3D9\uC77C\uD55C \uC6B0\uC120\uC21C\uC704(${maxPriority})\uB97C \uAC00\uC9C4 Layout\uC774 \uC5EC\uB7EC \uAC1C \uC788\uC5B4 \uC790\uB3D9\uC73C\uB85C \uACB0\uC815\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`,
+        candidates: topLayouts.map((l) => l.layoutKey),
+        criteria
+      };
+    }
+    return { ok: true, layout: topLayouts[0] };
+  }
+
+  // ../core/src/data/arrangementFamilyPolicy.ts
+  var MAX_GENERATED_SLOT_COUNT = 20;
+  var ARRANGEMENT_FAMILY_POLICY = [
+    { familyId: "single-center", minSlotCount: 1, maxSlotCount: 1 },
+    { familyId: "row-linear", minSlotCount: 2, maxSlotCount: 3 },
+    { familyId: "diagonal-cascade", minSlotCount: 4, maxSlotCount: 5 },
+    { familyId: "pyramid-stack", minSlotCount: 6, maxSlotCount: 10 },
+    { familyId: "grid-cluster", minSlotCount: 11, maxSlotCount: MAX_GENERATED_SLOT_COUNT }
+  ];
+  function resolveArrangementFamily(slotCount) {
+    return ARRANGEMENT_FAMILY_POLICY.find(
+      (r) => slotCount >= r.minSlotCount && slotCount <= r.maxSlotCount
+    );
+  }
+
+  // ../core/src/engine/generateFallbackLayout.ts
+  function generateFallbackLayout(input) {
+    if (input.slotCount > MAX_GENERATED_SLOT_COUNT) {
+      return {
+        ok: false,
+        reason: "SLOT_COUNT_EXCEEDS_GENERATED_LIMIT",
+        message: `\uC2AC\uB86F \uC218 ${input.slotCount}\uAC1C\uB294 generated fallback\uC758 V1 \uCD5C\uB300\uCE58(${MAX_GENERATED_SLOT_COUNT}\uAC1C)\uB97C \uCD08\uACFC\uD569\uB2C8\uB2E4.`
+      };
+    }
+    const range = resolveArrangementFamily(input.slotCount);
+    if (!range) {
+      return {
+        ok: false,
+        reason: "NO_ARRANGEMENT_FAMILY_FOR_SLOT_COUNT",
+        message: `\uC2AC\uB86F \uC218 ${input.slotCount}\uAC1C\uC5D0 \uB300\uC751\uD558\uB294 \uBC30\uCE58 family\uAC00 \uC815\uCC45 \uB370\uC774\uD130(arrangementFamilyPolicy)\uC5D0 \uC815\uC758\uB418\uC5B4 \uC788\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.`
+      };
+    }
+    const slots = Array.from({ length: input.slotCount }, (_, i) => ({
+      slotKey: `slot_${i + 1}`,
+      role: "sale"
+    }));
+    return {
+      ok: true,
+      layout: {
+        layoutKey: `GENERATED_${range.familyId.toUpperCase()}_${input.slotCount}`,
+        arrangementKind: range.familyId,
+        slots,
+        // generated layout은 selectLayout으로 검색되지 않고 resolveLayout이 직접 생성해서
+        // 반환하므로 match 조건이 필요 없다.
+        match: {},
+        priority: 0,
+        source: { kind: "generated", params: { familyId: range.familyId, slotCount: input.slotCount } }
+      }
+    };
+  }
+
+  // ../core/src/engine/resolveLayout.ts
+  function resolveLayout(criteria, layouts) {
+    const verifiedLayouts = layouts.filter((l) => l.source.kind === "verified");
+    const selection = selectLayout(criteria, verifiedLayouts);
+    if (selection.ok) {
+      return { status: "resolved", layout: selection.layout };
+    }
+    if (selection.reason === "AMBIGUOUS_LAYOUT_MATCH") {
+      return { status: "error", reason: "AMBIGUOUS_LAYOUT_MATCH", message: selection.message };
+    }
+    if (criteria.giftQuantity > 0) {
+      return {
+        status: "reviewRequired",
+        reason: "GIFT_NO_VERIFIED_LAYOUT",
+        message: "\uC99D\uC815\uD488\uC774 \uD3EC\uD568\uB41C \uC694\uCCAD\uC740 \uAC80\uC99D\uB41C(verified) Layout\uC774 \uC788\uC744 \uB54C\uB9CC \uC790\uB3D9 \uC0DD\uC131\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4. \uD574\uB2F9 \uC2AC\uB86F \uAD6C\uC131\uC758 \uAC80\uC99D\uB41C Layout\uC774 \uC5C6\uC5B4 \uAC80\uD1A0\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4."
+      };
+    }
+    if (criteria.thumbnailType === "staged") {
+      return {
+        status: "reviewRequired",
+        reason: "STAGED_NO_VERIFIED_LAYOUT",
+        message: "staged \uC378\uB124\uC77C\uC740 \uAC80\uC99D\uB41C(verified) Layout\uB9CC \uC0AC\uC6A9\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4(\uC790\uB3D9 \uC0DD\uC131 \uAE08\uC9C0). \uD574\uB2F9 \uC2AC\uB86F \uAD6C\uC131\uC758 \uAC80\uC99D\uB41C Layout\uC774 \uC5C6\uC5B4 \uAC80\uD1A0\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4."
+      };
+    }
+    const fallback = generateFallbackLayout({ slotCount: criteria.totalQuantity });
+    if (!fallback.ok) {
+      return { status: "error", reason: fallback.reason, message: fallback.message };
+    }
+    return { status: "resolved", layout: fallback.layout };
+  }
+
+  // ../core/src/engine/composePlan.ts
+  function expandItems(items) {
+    const out = [];
+    for (const item of items) {
+      for (let i = 0; i < item.quantity; i++) out.push(item.productId);
+    }
+    return out;
+  }
+  function composePlan(request, deps) {
+    var _a, _b, _c, _d, _e, _f;
+    const channelPreset = deps.channelPresets.find((c) => c.id === request.channelPresetId);
+    if (!channelPreset) {
+      return {
+        ok: false,
+        reviewRequired: false,
+        reason: "CHANNEL_PRESET_NOT_FOUND",
+        message: `channelPresetId "${request.channelPresetId}"\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`
+      };
+    }
+    if (request.items.length === 0) {
+      return {
+        ok: false,
+        reviewRequired: false,
+        reason: "EMPTY_ITEMS",
+        message: "\uD310\uB9E4 \uC0C1\uD488 \uD56D\uBAA9(items)\uC774 \uBE44\uC5B4 \uC788\uC2B5\uB2C8\uB2E4."
+      };
+    }
+    const saleProductIds = expandItems(request.items);
+    const giftProductIds = expandItems((_a = request.giftItems) != null ? _a : []);
+    const productLookup = new Map(deps.products.map((p) => [p.id, p]));
+    for (const id of [...saleProductIds, ...giftProductIds]) {
+      if (!productLookup.has(id)) {
+        return {
+          ok: false,
+          reviewRequired: false,
+          reason: "PRODUCT_NOT_FOUND",
+          message: `productId "${id}"\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`
+        };
+      }
+    }
+    const groups = new Set(
+      [...saleProductIds, ...giftProductIds].map((id) => productLookup.get(id).productGroup)
+    );
+    if (groups.size > 1) {
+      return {
+        ok: false,
+        reviewRequired: false,
+        reason: "INCONSISTENT_PRODUCT_GROUP",
+        message: `\uC694\uCCAD\uC5D0 \uC11C\uB85C \uB2E4\uB978 productGroup\uC774 \uC11E\uC5EC \uC788\uC2B5\uB2C8\uB2E4: ${[...groups].join(", ")}`
+      };
+    }
+    const productGroup = [...groups][0];
+    const composition = new Set(request.items.map((i) => i.productId)).size > 1 ? "mixed" : "single";
+    const thumbnailType = (_b = request.thumbnailType) != null ? _b : DEFAULT_THUMBNAIL_TYPE;
+    const resolution = resolveLayout(
+      {
+        productGroup,
+        composition,
+        totalQuantity: saleProductIds.length,
+        giftQuantity: giftProductIds.length,
+        channelId: channelPreset.channelId,
+        aspectRatioFamily: channelPreset.aspectRatioFamily,
+        thumbnailType
+      },
+      deps.layouts
+    );
+    if (resolution.status === "error") {
+      return { ok: false, reviewRequired: false, reason: resolution.reason, message: resolution.message };
+    }
+    if (resolution.status === "reviewRequired") {
+      return { ok: false, reviewRequired: true, reason: resolution.reason, message: resolution.message };
+    }
+    const layout = resolution.layout;
+    const assignment = assignSlots({
+      layout,
+      saleAssetKeys: saleProductIds.map((id) => productLookup.get(id).assetKey),
+      giftAssetKeys: giftProductIds.map((id) => productLookup.get(id).assetKey)
+    });
+    if (!assignment.ok) {
+      return { ok: false, reviewRequired: false, reason: assignment.reason, message: assignment.message };
+    }
+    const generatedLayout = layout.source.kind === "generated";
+    return {
+      ok: true,
+      plan: {
+        layoutKey: layout.layoutKey,
+        channelPresetId: channelPreset.id,
+        productGroup,
+        thumbnailType,
+        slots: assignment.slots,
+        layoutSource: layout.source,
+        generatedLayout,
+        // generated fallback으로 만들어진 plan은 향후 AUTO_GENERATED_REVIEW 같은 별도
+        // 검토 영역으로 보내야 하므로 항상 reviewRequired=true로 표시한다.
+        reviewRequired: generatedLayout,
+        options: {
+          badge: (_c = request.options) == null ? void 0 : _c.badge,
+          storageLabel: (_d = request.options) == null ? void 0 : _d.storageLabel,
+          logoVariant: (_f = (_e = request.options) == null ? void 0 : _e.logoVariant) != null ? _f : "red"
+        }
+      }
+    };
+  }
+
+  // ../core/src/import/composeBatch.ts
+  function productSummary(wo) {
+    return wo.lines.map((l) => {
+      var _a;
+      return `${l.productName || "(\uC0C1\uD488\uBA85 \uC5C6\uC74C)"}\xD7${(_a = l.quantity) != null ? _a : "?"}`;
+    }).join(" + ");
+  }
+  function arrangementLabelForLayoutKey(layoutKey, layouts) {
+    var _a, _b;
+    return (_b = (_a = layouts.find((l) => l.layoutKey === layoutKey)) == null ? void 0 : _a.arrangementKind) != null ? _b : null;
+  }
+  function composeRow(wo, products, layouts) {
+    var _a;
+    const base = {
+      workId: wo.workId,
+      channelId: wo.channelId,
+      channelLabel: wo.channelLabel,
+      productSummary: productSummary(wo),
+      totalQuantity: wo.totalQuantity,
+      badge: wo.badge
+    };
+    if (wo.status !== "valid") {
+      return __spreadProps(__spreadValues({}, base), {
+        status: wo.status,
+        layoutKey: null,
+        arrangementFamily: null,
+        layoutSource: null,
+        reason: wo.issues.map((i) => i.message).join(" / ") || null
+      });
+    }
+    const channelPreset = CHANNEL_PRESETS.find((p) => p.channelId === wo.channelId);
+    if (!channelPreset) {
+      return __spreadProps(__spreadValues({}, base), {
+        status: "error",
+        layoutKey: null,
+        arrangementFamily: null,
+        layoutSource: null,
+        reason: `\uCC44\uB110 "${(_a = wo.channelLabel) != null ? _a : wo.channelId}"\uC5D0 \uB300\uD55C \uCD9C\uB825 \uADDC\uACA9(channelPreset)\uC774 \uC544\uC9C1 \uB4F1\uB85D\uB418\uC5B4 \uC788\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.`
+      });
+    }
+    const items = wo.lines.map((l) => ({
+      productId: l.productCode,
+      quantity: l.quantity
+    }));
+    const result = composePlan(
+      {
+        items,
+        channelPresetId: channelPreset.id,
+        options: wo.badge === null ? void 0 : { badge: { enabled: wo.badge } }
+      },
+      { products, channelPresets: CHANNEL_PRESETS, layouts }
+    );
+    if (result.ok) {
+      const arrangementFamily = result.plan.layoutSource.kind === "generated" ? result.plan.layoutSource.params.familyId : arrangementLabelForLayoutKey(result.plan.layoutKey, layouts);
+      return __spreadProps(__spreadValues({}, base), {
+        status: result.plan.reviewRequired ? "reviewRequired" : "ready",
+        layoutKey: result.plan.layoutKey,
+        arrangementFamily,
+        layoutSource: result.plan.layoutSource.kind,
+        reason: result.plan.reviewRequired ? "\uAC80\uC99D\uB41C(verified) Layout\uC774 \uC5C6\uC5B4 \uBC30\uCE58 family \uACF5\uC2DD\uC73C\uB85C \uC790\uB3D9 \uC0DD\uC131\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uC2E4\uC81C \uC0AC\uC6A9 \uC804 \uAC80\uD1A0\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4." : null
+      });
+    }
+    return __spreadProps(__spreadValues({}, base), {
+      status: result.reviewRequired ? "reviewRequired" : "error",
+      layoutKey: null,
+      arrangementFamily: null,
+      layoutSource: null,
+      reason: result.message
+    });
+  }
+  function composeBatchPreview(batch, deps = {}) {
+    var _a, _b;
+    const products = (_a = deps.products) != null ? _a : DOMAIN_PRODUCTS;
+    const layouts = (_b = deps.layouts) != null ? _b : LAYOUTS;
+    const rows = batch.workOrders.map((wo) => composeRow(wo, products, layouts));
+    return {
+      sourceFileName: batch.sourceFileName,
+      rows,
+      summary: {
+        total: rows.length,
+        ready: rows.filter((r) => r.status === "ready").length,
+        reviewRequired: rows.filter((r) => r.status === "reviewRequired").length,
+        error: rows.filter((r) => r.status === "error").length
+      }
+    };
+  }
+
   // src/ui/BatchPreview.tsx
   var import_jsx_runtime = __toESM(require_jsx_runtime());
   var STATUS_LABEL = {
-    valid: "\uC815\uC0C1",
+    ready: "\uC0DD\uC131\uAC00\uB2A5",
     reviewRequired: "\uAC80\uD1A0\uD544\uC694",
     error: "\uC624\uB958"
   };
   var STATUS_COLOR = {
-    valid: "#1e8e3e",
+    ready: "#1e8e3e",
     reviewRequired: "#b58105",
     error: "#c0392b"
+  };
+  var SOURCE_LABEL = {
+    verified: "verified",
+    generated: "generated"
   };
   var cellStyle = { border: "1px solid #eee", padding: "4px 6px", verticalAlign: "top" };
   function BatchPreview() {
     var _a;
-    const [batch, setBatch] = (0, import_react.useState)(null);
+    const [preview, setPreview] = (0, import_react.useState)(null);
     const [error, setError] = (0, import_react.useState)(null);
     const [filter, setFilter] = (0, import_react.useState)("all");
     const onFileChange = async (e) => {
@@ -48587,34 +48994,34 @@
       const file = (_a2 = e.target.files) == null ? void 0 : _a2[0];
       if (!file) return;
       setError(null);
-      setBatch(null);
+      setPreview(null);
       try {
         const bytes = await file.arrayBuffer();
         const rows = await readWorkOrderSheet(bytes);
-        const result = parseWorkOrderRows(rows, file.name);
-        setBatch(result);
+        const batch = parseWorkOrderRows(rows, file.name);
+        setPreview(composeBatchPreview(batch));
       } catch (err) {
         setError(`\uC5D1\uC140\uC744 \uC77D\uB294 \uC911 \uC624\uB958: ${err.message}`);
       }
     };
-    const visibleWorkOrders = (_a = batch == null ? void 0 : batch.workOrders.filter((w) => filter === "all" || w.status === filter)) != null ? _a : [];
+    const visibleRows = (_a = preview == null ? void 0 : preview.rows.filter((r) => filter === "all" || r.status === filter)) != null ? _a : [];
     return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { style: { margin: "4px 0", color: "#666" }, children: "\uD45C\uC900 \uC694\uCCAD\uC11C(01_\uC791\uC5C5\uC694\uCCAD)\uB97C \uC120\uD0DD\uD558\uBA74 \uC791\uC5C5ID \uAE30\uC900\uC73C\uB85C \uBB36\uC5B4 \uC815\uC0C1/\uAC80\uD1A0\uD544\uC694/\uC624\uB958\uB9CC \uBBF8\uB9AC \uD655\uC778\uD569\uB2C8\uB2E4. \uC544\uC9C1 \uC2E4\uC81C \uC0DD\uC131\uACFC\uB294 \uC5F0\uACB0\uB418\uC5B4 \uC788\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4." }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { style: { margin: "4px 0", color: "#666" }, children: "\uD45C\uC900 \uC694\uCCAD\uC11C(01_\uC791\uC5C5\uC694\uCCAD)\uB97C \uC120\uD0DD\uD558\uBA74 \uC791\uC5C5ID \uAE30\uC900\uC73C\uB85C \uBB36\uC5B4 Layout \uC120\uD0DD(verified/generated fallback)\uAE4C\uC9C0 \uC2DC\uBBAC\uB808\uC774\uC158\uD55C \uBBF8\uB9AC\uBCF4\uAE30\uB97C \uBCF4\uC5EC\uC90D\uB2C8\uB2E4. \uC544\uC9C1 \uC2E4\uC81C Figma \uB80C\uB354\uB9C1\uACFC\uB294 \uC5F0\uACB0\uB418\uC5B4 \uC788\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4(mock \uAE30\uBC18 \uAC80\uC99D \uB2E8\uACC4)." }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "file", accept: ".xlsx", onChange: onFileChange }),
       error && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { style: { color: STATUS_COLOR.error }, children: error }),
-      batch && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+      preview && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", { style: { marginTop: 12 }, children: [
           "\uCD1D \uC791\uC5C5 ",
-          batch.summary.totalWorkOrders,
-          "\uAC74 \u2014 \uC815\uC0C1 ",
-          batch.summary.valid,
+          preview.summary.total,
+          "\uAC74 \u2014 \uC0DD\uC131\uAC00\uB2A5 ",
+          preview.summary.ready,
           " / \uAC80\uD1A0\uD544\uC694",
           " ",
-          batch.summary.reviewRequired,
+          preview.summary.reviewRequired,
           " / \uC624\uB958 ",
-          batch.summary.error
+          preview.summary.error
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "flex", gap: 6, marginBottom: 8 }, children: ["all", "valid", "reviewRequired", "error"].map((s) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "flex", gap: 6, marginBottom: 8 }, children: ["all", "ready", "reviewRequired", "error"].map((s) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
           "button",
           {
             onClick: () => setFilter(s),
@@ -48626,41 +49033,31 @@
           },
           s
         )) }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { maxHeight: 320, overflow: "auto", border: "1px solid #ddd" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("table", { style: { width: "100%", borderCollapse: "collapse", fontSize: 11 }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { maxHeight: 360, overflow: "auto", border: "1px solid #ddd" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("table", { style: { width: "100%", borderCollapse: "collapse", fontSize: 11 }, children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("tr", { style: { position: "sticky", top: 0, background: "#f5f5f5" }, children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { style: cellStyle, children: "\uC791\uC5C5ID" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { style: cellStyle, children: "\uC0C1\uD0DC" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { style: cellStyle, children: "\uC0C1\uD488\uAD70" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { style: cellStyle, children: "\uCC44\uB110" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { style: cellStyle, children: "\uAD6C\uC131" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { style: cellStyle, children: "\uC0C1\uD488 \uAD6C\uC131" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { style: cellStyle, children: "\uCD1D\uC218\uB7C9" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { style: cellStyle, children: "\uB531\uC9C0" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { style: cellStyle, children: "\uC0C1\uD488 \uBAA9\uB85D" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { style: cellStyle, children: "\uC774\uC288" })
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { style: cellStyle, children: "layoutKey" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { style: cellStyle, children: "family" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { style: cellStyle, children: "source" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { style: cellStyle, children: "\uC0C1\uD0DC" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { style: cellStyle, children: "\uC624\uB958/\uAC80\uD1A0 \uC0AC\uC720" })
           ] }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("tbody", { children: visibleWorkOrders.map((wo) => {
-            var _a2, _b;
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("tbody", { children: visibleRows.map((row) => {
+            var _a2, _b, _c, _d, _e;
             return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("tr", { children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: cellStyle, children: wo.workId }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: __spreadProps(__spreadValues({}, cellStyle), { color: STATUS_COLOR[wo.status], fontWeight: 600 }), children: STATUS_LABEL[wo.status] }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: cellStyle, children: (_a2 = wo.productGroup) != null ? _a2 : "(\uBD88\uC77C\uCE58)" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: cellStyle, children: (_b = wo.channelId) != null ? _b : "(\uBD88\uC77C\uCE58/\uBBF8\uD655\uC778)" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: cellStyle, children: wo.composition === "mixed" ? "\uD63C\uD569" : "\uB2E8\uC77C" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: cellStyle, children: wo.totalQuantity }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: cellStyle, children: wo.badge === null ? "?" : wo.badge ? "O" : "X" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: cellStyle, children: wo.lines.map((l) => {
-                var _a3, _b2;
-                return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
-                  (_a3 = l.seq) != null ? _a3 : "?",
-                  ". ",
-                  l.productName,
-                  " \xD7 ",
-                  (_b2 = l.quantity) != null ? _b2 : "?",
-                  l.productCode ? "" : " (\uCF54\uB4DC \uBBF8\uD655\uC778)"
-                ] }, l.rowIndex);
-              }) }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: cellStyle, children: wo.issues.map((issue, idx) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { children: issue.message }, idx)) })
-            ] }, wo.workId);
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: cellStyle, children: row.workId }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: cellStyle, children: (_b = (_a2 = row.channelLabel) != null ? _a2 : row.channelId) != null ? _b : "(\uBD88\uC77C\uCE58/\uBBF8\uD655\uC778)" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: cellStyle, children: row.productSummary }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: cellStyle, children: row.totalQuantity }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: cellStyle, children: (_c = row.layoutKey) != null ? _c : "-" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: cellStyle, children: (_d = row.arrangementFamily) != null ? _d : "-" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: cellStyle, children: row.layoutSource ? SOURCE_LABEL[row.layoutSource] : "-" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: __spreadProps(__spreadValues({}, cellStyle), { color: STATUS_COLOR[row.status], fontWeight: 600 }), children: STATUS_LABEL[row.status] }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: cellStyle, children: (_e = row.reason) != null ? _e : "" })
+            ] }, row.workId);
           }) })
         ] }) })
       ] })
