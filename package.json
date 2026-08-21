@@ -5,6 +5,7 @@
   "workspaces": ["packages/*"],
   "scripts": {
     "build:plugin": "npm run build --workspace=@thumbnail-generator/figma-plugin",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "generate:template": "npm run generate:template --workspace=@thumbnail-generator/core"
   }
 }
