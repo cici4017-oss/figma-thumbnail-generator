@@ -64,10 +64,28 @@ export const LAYOUTS: LayoutDefinition[] = [
     source: { kind: 'verified' },
   },
   {
-    // 대표 Figma frame: 네이버_소고기장조림130_10 (node 69:353) — 중앙 대형 1개 + 주변 9개 클러스터, 10슬롯 확인
+    // 대표 Figma frame: 네이버_소고기장조림130_10 (node 69:353) — 중앙 대형 1개(node 69:373,
+    // "image 321", 549x549) + 주변 소형 9개(node 69:364~69:372, 각 343~344px 균일 크기)로
+    // 구성된 main/sub 비대칭 클러스터. 실제 레이어 이름에는 "main"/"sub" 표기가 없어서(전부
+    // "image NNN") 이 비대칭 구조를 slot_1(=main)이 먼저 채워지는 순서로 코드에 반영한다.
+    // V1 정책: 혼합상품은 assignSlots가 slot_1부터 순서대로 채우므로, Excel 순번이 가장 빠른
+    // 상품이 slot_1(main, 중앙 대형)에 배정된다 — 이 순서 자체가 "main/sub 역할 배정"이다.
+    // 실제 Figma 바인딩(templateMapper, 아직 미연결)을 붙일 때 slot_1은 반드시
+    // node 69:373("image 321")에, slot_2~10은 나머지 9개 소형 슬롯에 매핑해야 한다.
     layoutKey: 'LAYOUT_04',
     arrangementKind: 'grid-cluster-10',
-    slots: Array.from({ length: 10 }, (_, i) => ({ slotKey: `slot_${i + 1}`, role: 'sale' as const })),
+    slots: [
+      { slotKey: 'slot_1', role: 'sale' }, // main: 중앙 대형(549x549) — node 69:373 "image 321"
+      { slotKey: 'slot_2', role: 'sale' }, // sub
+      { slotKey: 'slot_3', role: 'sale' }, // sub
+      { slotKey: 'slot_4', role: 'sale' }, // sub
+      { slotKey: 'slot_5', role: 'sale' }, // sub
+      { slotKey: 'slot_6', role: 'sale' }, // sub
+      { slotKey: 'slot_7', role: 'sale' }, // sub
+      { slotKey: 'slot_8', role: 'sale' }, // sub
+      { slotKey: 'slot_9', role: 'sale' }, // sub
+      { slotKey: 'slot_10', role: 'sale' }, // sub
+    ],
     match: {
       productGroups: ['simple-meal'],
       compositions: ['single', 'mixed'],
@@ -80,7 +98,12 @@ export const LAYOUTS: LayoutDefinition[] = [
 ];
 
 /**
- * 아직 등록하지 않은 후보(추가 확인 필요) — 코드에는 반영하지 않고 기록만 남긴다:
- * - 네이버_연출_소고기장조림130_1/3/5 (staged 후보): basic 확인 후 반복 사용 가능한 구조인지 조사 예정.
+ * 아직 등록하지 않은 후보 — 코드에는 반영하지 않고 기록만 남긴다:
+ * - 네이버_연출_소고기장조림130_1/3/5 (node 69:469/69:492/69:517, staged 후보였음): 조사 결과
+ *   레이어 이름·위치·크기·렌더링된 이미지까지 각 basic 대응 프레임(69:307/69:417/69:442)과
+ *   완전히 동일함(픽셀 단위로 동일한 스크린샷) — "연출"이라는 이름만 있을 뿐 실제로는 basic
+ *   프레임의 복제본으로 보이고, staged 고유의 배치/소품/배경 요소가 전혀 없다. 반복 가능한
+ *   실제 템플릿으로 확인되지 않았으므로 staged verified 후보에서 제외한다. 실제 staged
+ *   디자인은 이 파일에서 아직 발견되지 않은 상태.
  * - 네이버_대용량메추리알1+1_증정_* (gift 후보, 2슬롯): 상품(대용량메추리알1kg) 자체가 아직 Product Registry에 없음.
  */
