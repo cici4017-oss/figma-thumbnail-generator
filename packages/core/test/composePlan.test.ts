@@ -104,6 +104,29 @@ const deps = { products, channelPresets: CHANNEL_PRESETS, layouts: LAYOUTS };
   console.log('  ✓ 네이버 basic 1/5/10슬롯 -> LAYOUT_01/03/04(verified) 정상 선택');
 }
 
+// 4-2) LAYOUT_04(10슬롯 mixed) -> Excel 순번이 가장 빠른 상품이 main(slot_1)에,
+//      나머지가 sub(slot_2~10)에 배정되어야 함 (role이 CompositionPlan까지 보존됨)
+{
+  const result = composePlan(
+    {
+      items: [
+        { productId: 'p-beef', quantity: 1 }, // 순번 1 -> main
+        { productId: 'p-quail', quantity: 9 }, // 순번 2 -> sub 9개
+      ],
+      channelPresetId: 'naver-1000x1000',
+    },
+    deps,
+  );
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.equal(result.plan.layoutKey, 'LAYOUT_04');
+    assert.deepEqual(result.plan.slots[0], { slotKey: 'slot_1', assetKey: 'beef-asset', role: 'main' });
+    assert.ok(result.plan.slots.slice(1).every((s) => s.role === 'sub'));
+    assert.ok(result.plan.slots.slice(1).every((s) => s.assetKey === 'quail-asset'));
+  }
+  console.log('  ✓ LAYOUT_04: 순번 가장 빠른 상품이 main(slot_1), 나머지가 sub으로 배정됨');
+}
+
 // 5) end-to-end: A×2 + B×3 + C×4 (9종 혼합) -> 9슬롯 Layout, slot_1~2=A, slot_3~5=B, slot_6~9=C
 //    (selectLayout은 Layout 선택만, 실제 순번×수량 펼치기/슬롯 배치는 assignSlots가 담당)
 {

@@ -21,8 +21,14 @@ export type ArrangementKind =
   | 'pyramid-stack'
   | 'grid-cluster';
 
-/** 판매수량에 포함되는 슬롯인지(sale) 아니면 별도 증정품 슬롯인지(gift) */
-export type LayoutSlotRole = 'sale' | 'gift';
+/**
+ * 판매수량에 포함되는 슬롯인지(sale/main/sub) 아니면 별도 증정품 슬롯인지(gift).
+ * 'main'/'sub'는 'sale'의 세부 구분이다 — 슬롯 크기가 균일하지 않은 Layout(예: LAYOUT_04의
+ * 중앙 대형 1개 + 주변 소형 9개)에서 어떤 슬롯이 시각적으로 강조되는 자리인지 표시한다.
+ * "판매 슬롯"인지 여부는 role === 'gift'가 아닌 것으로 판단한다(getSaleSlotCount 참고) —
+ * sale/main/sub 모두 판매수량에 포함된다.
+ */
+export type LayoutSlotRole = 'sale' | 'gift' | 'main' | 'sub';
 
 export interface LayoutSlot {
   /** 렌더러가 실제 레이어에 매핑할 때 쓰는 식별자. 좌표는 여기 두지 않는다 — 기존 Figma 디자인이 source of truth. */
@@ -50,7 +56,7 @@ export interface LayoutDefinition {
 }
 
 export function getSaleSlotCount(layout: LayoutDefinition): number {
-  return layout.slots.filter((s) => s.role === 'sale').length;
+  return layout.slots.filter((s) => s.role !== 'gift').length;
 }
 
 export function getGiftSlotCount(layout: LayoutDefinition): number {

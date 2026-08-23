@@ -1,5 +1,5 @@
 import type { CompositionPlanSlot } from '../domain/composition-plan';
-import { type LayoutDefinition, type LayoutSlot, type LayoutSlotRole } from '../domain/layout';
+import { type LayoutDefinition, type LayoutSlot } from '../domain/layout';
 
 /**
  * "어떤 Layout을 쓸지"(selectLayout)와 "그 Layout의 슬롯에 무엇을 채울지"(assignSlots)를
@@ -36,17 +36,29 @@ function slotOrderKey(slotKey: string): number {
   return match ? Number(match[1]) : Number.POSITIVE_INFINITY;
 }
 
-function slotsForRole(layout: LayoutDefinition, role: LayoutSlotRole): LayoutSlot[] {
-  return layout.slots.filter((s) => s.role === role).sort((a, b) => slotOrderKey(a.slotKey) - slotOrderKey(b.slotKey));
+function sortBySlotOrder(slots: LayoutSlot[]): LayoutSlot[] {
+  return [...slots].sort((a, b) => slotOrderKey(a.slotKey) - slotOrderKey(b.slotKey));
 }
 
-function fillSlots(slots: LayoutSlot[], assetKeys: string[], role: LayoutSlotRole): CompositionPlanSlot[] {
-  return slots.map((slot, i) => ({ slotKey: slot.slotKey, assetKey: assetKeys[i], role }));
+// 판매 슬롯인지 여부는 role==='gift'가 아닌 것으로 판단한다 — 'sale'/'main'/'sub' 모두
+// 판매수량에 포함된다('main'/'sub'는 'sale'의 세부 구분일 뿐이다. domain/layout.ts 참고).
+function saleSlotsOf(layout: LayoutDefinition): LayoutSlot[] {
+  return sortBySlotOrder(layout.slots.filter((s) => s.role !== 'gift'));
+}
+
+function giftSlotsOf(layout: LayoutDefinition): LayoutSlot[] {
+  return sortBySlotOrder(layout.slots.filter((s) => s.role === 'gift'));
+}
+
+// 각 슬롯이 원래 갖고 있던 role(sale/main/sub/gift)을 그대로 보존한다 — 하나의 값으로
+// 덮어쓰지 않아야 main/sub 같은 세부 구분이 CompositionPlan까지 이어진다.
+function fillSlots(slots: LayoutSlot[], assetKeys: string[]): CompositionPlanSlot[] {
+  return slots.map((slot, i) => ({ slotKey: slot.slotKey, assetKey: assetKeys[i], role: slot.role }));
 }
 
 export function assignSlots(input: AssignSlotsInput): AssignSlotsResult {
-  const saleSlots = slotsForRole(input.layout, 'sale');
-  const giftSlots = slotsForRole(input.layout, 'gift');
+  const saleSlots = saleSlotsOf(input.layout);
+  const giftSlots = giftSlotsOf(input.layout);
 
   if (saleSlots.length !== input.saleAssetKeys.length) {
     return {
@@ -71,9 +83,6 @@ export function assignSlots(input: AssignSlotsInput): AssignSlotsResult {
 
   return {
     ok: true,
-    slots: [
-      ...fillSlots(saleSlots, input.saleAssetKeys, 'sale'),
-      ...fillSlots(giftSlots, input.giftAssetKeys, 'gift'),
-    ],
+    slots: [...fillSlots(saleSlots, input.saleAssetKeys), ...fillSlots(giftSlots, input.giftAssetKeys)],
   };
 }
