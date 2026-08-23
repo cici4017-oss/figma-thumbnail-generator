@@ -48616,6 +48616,21 @@
   // ../core/src/data/layouts.ts
   var LAYOUTS = [
     {
+      // 대표 Figma frame: 네이버_소고기장조림130_1 (node 69:307) — image 312 슬롯 1개 확인
+      layoutKey: "LAYOUT_01",
+      arrangementKind: "single-center",
+      slots: [{ slotKey: "slot_1", role: "sale" }],
+      match: {
+        productGroups: ["simple-meal"],
+        compositions: ["single", "mixed"],
+        aspectRatioFamilies: ["square"],
+        thumbnailTypes: ["basic"]
+      },
+      priority: 100,
+      source: { kind: "verified" }
+    },
+    {
+      // 대표 Figma frame: 네이버_소고기장조림130_3 (node 69:417) — image 313/409/410 대각선 3슬롯 확인
       layoutKey: "LAYOUT_02",
       arrangementKind: "triple-cascade",
       slots: [
@@ -48623,6 +48638,40 @@
         { slotKey: "slot_2", role: "sale" },
         { slotKey: "slot_3", role: "sale" }
       ],
+      match: {
+        productGroups: ["simple-meal"],
+        compositions: ["single", "mixed"],
+        aspectRatioFamilies: ["square"],
+        thumbnailTypes: ["basic"]
+      },
+      priority: 100,
+      source: { kind: "verified" }
+    },
+    {
+      // 대표 Figma frame: 네이버_소고기장조림130_5 (node 69:442) — 상단 3 + 하단 2 피라미드 배치, 5슬롯 확인
+      layoutKey: "LAYOUT_03",
+      arrangementKind: "penta-pyramid",
+      slots: [
+        { slotKey: "slot_1", role: "sale" },
+        { slotKey: "slot_2", role: "sale" },
+        { slotKey: "slot_3", role: "sale" },
+        { slotKey: "slot_4", role: "sale" },
+        { slotKey: "slot_5", role: "sale" }
+      ],
+      match: {
+        productGroups: ["simple-meal"],
+        compositions: ["single", "mixed"],
+        aspectRatioFamilies: ["square"],
+        thumbnailTypes: ["basic"]
+      },
+      priority: 100,
+      source: { kind: "verified" }
+    },
+    {
+      // 대표 Figma frame: 네이버_소고기장조림130_10 (node 69:353) — 중앙 대형 1개 + 주변 9개 클러스터, 10슬롯 확인
+      layoutKey: "LAYOUT_04",
+      arrangementKind: "grid-cluster-10",
+      slots: Array.from({ length: 10 }, (_, i) => ({ slotKey: `slot_${i + 1}`, role: "sale" })),
       match: {
         productGroups: ["simple-meal"],
         compositions: ["single", "mixed"],

@@ -82,6 +82,28 @@ const deps = { products, channelPresets: CHANNEL_PRESETS, layouts: LAYOUTS };
   assert.equal(!result.ok && result.reason, 'GIFT_NO_VERIFIED_LAYOUT');
 }
 
+// 4-1) 네이버 채널 basic 1/5/10 슬롯 -> 실제 Figma screenshot/node 구조로 검증 후 등록한
+//      LAYOUT_01/03/04(verified)가 generated fallback 없이 그대로 선택되어야 함
+{
+  const cases: Array<{ quantity: number; layoutKey: string }> = [
+    { quantity: 1, layoutKey: 'LAYOUT_01' },
+    { quantity: 5, layoutKey: 'LAYOUT_03' },
+    { quantity: 10, layoutKey: 'LAYOUT_04' },
+  ];
+  for (const { quantity, layoutKey } of cases) {
+    const result = composePlan(
+      { items: [{ productId: 'p-beef', quantity }], channelPresetId: 'naver-1000x1000' },
+      deps,
+    );
+    assert.equal(result.ok, true, `quantity=${quantity}`);
+    assert.equal(result.ok && result.plan.layoutKey, layoutKey, `quantity=${quantity}`);
+    assert.equal(result.ok && result.plan.layoutSource.kind, 'verified', `quantity=${quantity}`);
+    assert.equal(result.ok && result.plan.reviewRequired, false, `quantity=${quantity}`);
+    assert.equal(result.ok && result.plan.slots.length, quantity, `quantity=${quantity}`);
+  }
+  console.log('  ✓ 네이버 basic 1/5/10슬롯 -> LAYOUT_01/03/04(verified) 정상 선택');
+}
+
 // 5) end-to-end: A×2 + B×3 + C×4 (9종 혼합) -> 9슬롯 Layout, slot_1~2=A, slot_3~5=B, slot_6~9=C
 //    (selectLayout은 Layout 선택만, 실제 순번×수량 펼치기/슬롯 배치는 assignSlots가 담당)
 {
