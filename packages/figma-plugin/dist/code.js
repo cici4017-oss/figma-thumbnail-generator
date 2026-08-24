@@ -1270,6 +1270,30 @@
         { slotKey: "slot_2", layerName: "image 409" },
         { slotKey: "slot_3", layerName: "image 410" }
       ]
+    },
+    {
+      layoutKey: "LAYOUT_03",
+      channelPresetId: "naver-1000x1000",
+      templateFrameName: "\uB124\uC774\uBC84_\uC18C\uACE0\uAE30\uC7A5\uC870\uB9BC130_5",
+      templateFrameNodeId: "69:442",
+      slotBindings: [
+        { slotKey: "slot_1", layerName: "image 411" },
+        { slotKey: "slot_2", layerName: "image 412" },
+        { slotKey: "slot_3", layerName: "image 413" },
+        { slotKey: "slot_4", layerName: "image 414" },
+        { slotKey: "slot_5", layerName: "image 415" }
+      ]
+    },
+    {
+      layoutKey: "LAYOUT_06",
+      channelPresetId: "kakao-750x422",
+      templateFrameName: "\uCE74\uCE74\uC624_750_\uC18C\uACE0\uAE30\uC7A5\uC870\uB9BC130_3",
+      templateFrameNodeId: "69:2306",
+      slotBindings: [
+        { slotKey: "slot_1", layerName: "image 418" },
+        { slotKey: "slot_2", layerName: "image 419" },
+        { slotKey: "slot_3", layerName: "image 420" }
+      ]
     }
   ];
   function resolveTemplate(layoutKey, channelPresetId, bindings = FIGMA_TEMPLATE_BINDINGS) {

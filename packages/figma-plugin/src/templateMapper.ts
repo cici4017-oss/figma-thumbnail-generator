@@ -41,8 +41,12 @@ export interface FigmaTemplateBinding {
  * 이 바인딩을 실제로 company Figma에서 실행하는 것은 개발 완료 후 별도의 승인/배포 단계에서만
  * 이루어진다 — 자세한 내용은 저장소 루트 README.md의 "개발 단계 vs 배포 단계" 참고.
  *
- * 파일럿 범위: LAYOUT_02 하나만 바인딩한다.
- * 레이어 이름(image 313 / image 409 / image 410)은 Figma MCP로 조사한 실제 값이다.
+ * 첫 렌더링 테스트 범위: LAYOUT_02/LAYOUT_03(네이버)와 LAYOUT_06(카카오, wide-16x9)만
+ * 바인딩한다. 전부 fileKey v6UalGGplex8w2hzfbqwhI("썸네일 (Copy)")를 Figma MCP로 read-only
+ * 조사해서 확인한 실제 프레임/레이어 이름이다. generated Layout(예: GENERATED_PYRAMID-
+ * STACK_9)은 실제 프레임이 없으므로 의도적으로 바인딩하지 않는다 — resolveTemplate이
+ * undefined를 반환하고 renderPlan이 "템플릿 매핑이 없습니다"로 명확히 실패하는 것이 맞는
+ * 동작이다(임의로 다른 템플릿을 대신 쓰지 않음).
  */
 export const FIGMA_TEMPLATE_BINDINGS: FigmaTemplateBinding[] = [
   {
@@ -54,6 +58,30 @@ export const FIGMA_TEMPLATE_BINDINGS: FigmaTemplateBinding[] = [
       { slotKey: 'slot_1', layerName: 'image 313' },
       { slotKey: 'slot_2', layerName: 'image 409' },
       { slotKey: 'slot_3', layerName: 'image 410' },
+    ],
+  },
+  {
+    layoutKey: 'LAYOUT_03',
+    channelPresetId: 'naver-1000x1000',
+    templateFrameName: '네이버_소고기장조림130_5',
+    templateFrameNodeId: '69:442',
+    slotBindings: [
+      { slotKey: 'slot_1', layerName: 'image 411' },
+      { slotKey: 'slot_2', layerName: 'image 412' },
+      { slotKey: 'slot_3', layerName: 'image 413' },
+      { slotKey: 'slot_4', layerName: 'image 414' },
+      { slotKey: 'slot_5', layerName: 'image 415' },
+    ],
+  },
+  {
+    layoutKey: 'LAYOUT_06',
+    channelPresetId: 'kakao-750x422',
+    templateFrameName: '카카오_750_소고기장조림130_3',
+    templateFrameNodeId: '69:2306',
+    slotBindings: [
+      { slotKey: 'slot_1', layerName: 'image 418' },
+      { slotKey: 'slot_2', layerName: 'image 419' },
+      { slotKey: 'slot_3', layerName: 'image 420' },
     ],
   },
 ];
