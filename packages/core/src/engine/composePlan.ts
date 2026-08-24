@@ -94,6 +94,7 @@ export function composePlan(
       aspectRatioFamily: channelPreset.aspectRatioFamily,
       geometryFamily: channelPreset.geometryFamily,
       thumbnailType,
+      fallbackPolicy: channelPreset.fallbackPolicy,
     },
     deps.layouts,
   );

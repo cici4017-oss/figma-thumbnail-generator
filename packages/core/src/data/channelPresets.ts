@@ -20,6 +20,11 @@ import type { ChannelPreset } from '../domain/channel';
  * 배경 hero 이미지 + 마스크 아이콘 + N개 소형 슬롯이라는, 다른 wide와 확연히 다른 구조라
  * wide-5x2로 분리하고 verified Layout은 아직 등록하지 않았다(추가 확인 필요).
  * square Layout을 wide로, 혹은 서로 다른 geometryFamily끼리 스케일해서 재사용하지 않는다.
+ *
+ * fallbackPolicy: verified Layout이 없을 때 generated fallback을 허용할지 정하는 preset별
+ * 정책. 대부분은 'verified-or-generated'(기본)지만, toss-600x240은 hero 이미지+아이콘+소형
+ * 슬롯이 섞인 채널 고유 구조라 generic family 공식이 맞지 않아 'verified-only'로 설정했다 —
+ * 검증된 Layout이 없으면 자동 생성하지 않고 reviewRequired로 사람이 수동 처리한다.
  */
 export const CHANNEL_PRESETS: ChannelPreset[] = [
   // --- 복수 규격 채널 (square + wide) ---
@@ -30,6 +35,7 @@ export const CHANNEL_PRESETS: ChannelPreset[] = [
     frameHeight: 1000,
     aspectRatioFamily: 'square',
     geometryFamily: 'square-1x1',
+    fallbackPolicy: 'verified-or-generated',
     storageLabelSupported: true,
     badgeSupported: true,
   },
@@ -40,6 +46,7 @@ export const CHANNEL_PRESETS: ChannelPreset[] = [
     frameHeight: 1000,
     aspectRatioFamily: 'square',
     geometryFamily: 'square-1x1',
+    fallbackPolicy: 'verified-or-generated',
     storageLabelSupported: true,
     badgeSupported: true,
   },
@@ -52,6 +59,7 @@ export const CHANNEL_PRESETS: ChannelPreset[] = [
     frameHeight: 422,
     aspectRatioFamily: 'wide',
     geometryFamily: 'wide-16x9',
+    fallbackPolicy: 'verified-or-generated',
     storageLabelSupported: true,
     badgeSupported: true,
   },
@@ -62,6 +70,7 @@ export const CHANNEL_PRESETS: ChannelPreset[] = [
     frameHeight: 1000,
     aspectRatioFamily: 'square',
     geometryFamily: 'square-1x1',
+    fallbackPolicy: 'verified-or-generated',
     storageLabelSupported: true,
     badgeSupported: true,
   },
@@ -73,6 +82,7 @@ export const CHANNEL_PRESETS: ChannelPreset[] = [
     frameHeight: 350,
     aspectRatioFamily: 'wide',
     geometryFamily: 'wide-16x9',
+    fallbackPolicy: 'verified-or-generated',
     storageLabelSupported: true,
     badgeSupported: true,
   },
@@ -83,6 +93,7 @@ export const CHANNEL_PRESETS: ChannelPreset[] = [
     frameHeight: 1000,
     aspectRatioFamily: 'square',
     geometryFamily: 'square-1x1',
+    fallbackPolicy: 'verified-or-generated',
     storageLabelSupported: true,
     badgeSupported: true,
   },
@@ -90,12 +101,16 @@ export const CHANNEL_PRESETS: ChannelPreset[] = [
     // 600x240 = 2.5:1 — hero 배경 이미지 + 마스크 아이콘 + N개 소형 슬롯이라는 독특한 구조
     // (다른 wide처럼 균일 슬롯 가로 배치가 아님, 69:2553/69:2588/69:2601 조사 결과). 다른
     // wide 규격과 다른 별도 geometryFamily(wide-5x2)로 분리 — verified Layout 미등록.
+    // fallbackPolicy를 'verified-only'로 설정 — 채널 고유 구조라 generic family 공식으로
+    // generated fallback을 만들면 실제 디자인과 전혀 다른 결과가 나오므로, verified Layout이
+    // 없으면 자동 생성하지 않고 reviewRequired로 사람이 수동 처리하게 한다.
     id: 'toss-600x240',
     channelId: 'toss',
     frameWidth: 600,
     frameHeight: 240,
     aspectRatioFamily: 'wide',
     geometryFamily: 'wide-5x2',
+    fallbackPolicy: 'verified-only',
     storageLabelSupported: true,
     badgeSupported: true,
   },
@@ -106,6 +121,7 @@ export const CHANNEL_PRESETS: ChannelPreset[] = [
     frameHeight: 1000,
     aspectRatioFamily: 'square',
     geometryFamily: 'square-1x1',
+    fallbackPolicy: 'verified-or-generated',
     storageLabelSupported: true,
     badgeSupported: true,
   },
@@ -117,6 +133,7 @@ export const CHANNEL_PRESETS: ChannelPreset[] = [
     frameHeight: 400,
     aspectRatioFamily: 'wide',
     geometryFamily: 'wide-16x9',
+    fallbackPolicy: 'verified-or-generated',
     storageLabelSupported: true,
     badgeSupported: true,
   },
@@ -127,6 +144,7 @@ export const CHANNEL_PRESETS: ChannelPreset[] = [
     frameHeight: 1000,
     aspectRatioFamily: 'square',
     geometryFamily: 'square-1x1',
+    fallbackPolicy: 'verified-or-generated',
     storageLabelSupported: true,
     badgeSupported: true,
   },
@@ -141,6 +159,7 @@ export const CHANNEL_PRESETS: ChannelPreset[] = [
     frameHeight: 360,
     aspectRatioFamily: 'wide',
     geometryFamily: 'wide-2x1',
+    fallbackPolicy: 'verified-or-generated',
     storageLabelSupported: true,
     badgeSupported: true,
   },
@@ -153,6 +172,7 @@ export const CHANNEL_PRESETS: ChannelPreset[] = [
     frameHeight: 1000,
     aspectRatioFamily: 'square',
     geometryFamily: 'square-1x1',
+    fallbackPolicy: 'verified-or-generated',
     storageLabelSupported: true,
     badgeSupported: true,
   },
@@ -163,6 +183,7 @@ export const CHANNEL_PRESETS: ChannelPreset[] = [
     frameHeight: 1000,
     aspectRatioFamily: 'square',
     geometryFamily: 'square-1x1',
+    fallbackPolicy: 'verified-or-generated',
     storageLabelSupported: true,
     badgeSupported: true,
   },
@@ -173,6 +194,7 @@ export const CHANNEL_PRESETS: ChannelPreset[] = [
     frameHeight: 1000,
     aspectRatioFamily: 'square',
     geometryFamily: 'square-1x1',
+    fallbackPolicy: 'verified-or-generated',
     storageLabelSupported: true,
     badgeSupported: true,
   },
@@ -183,6 +205,7 @@ export const CHANNEL_PRESETS: ChannelPreset[] = [
     frameHeight: 1000,
     aspectRatioFamily: 'square',
     geometryFamily: 'square-1x1',
+    fallbackPolicy: 'verified-or-generated',
     storageLabelSupported: true,
     badgeSupported: true,
   },
@@ -193,6 +216,7 @@ export const CHANNEL_PRESETS: ChannelPreset[] = [
     frameHeight: 1000,
     aspectRatioFamily: 'square',
     geometryFamily: 'square-1x1',
+    fallbackPolicy: 'verified-or-generated',
     storageLabelSupported: true,
     badgeSupported: true,
   },
@@ -203,6 +227,7 @@ export const CHANNEL_PRESETS: ChannelPreset[] = [
     frameHeight: 1000,
     aspectRatioFamily: 'square',
     geometryFamily: 'square-1x1',
+    fallbackPolicy: 'verified-or-generated',
     storageLabelSupported: true,
     badgeSupported: true,
   },
@@ -213,6 +238,7 @@ export const CHANNEL_PRESETS: ChannelPreset[] = [
     frameHeight: 1000,
     aspectRatioFamily: 'square',
     geometryFamily: 'square-1x1',
+    fallbackPolicy: 'verified-or-generated',
     storageLabelSupported: true,
     badgeSupported: true,
   },
@@ -223,6 +249,7 @@ export const CHANNEL_PRESETS: ChannelPreset[] = [
     frameHeight: 1000,
     aspectRatioFamily: 'square',
     geometryFamily: 'square-1x1',
+    fallbackPolicy: 'verified-or-generated',
     storageLabelSupported: true,
     badgeSupported: true,
   },
@@ -234,6 +261,7 @@ export const CHANNEL_PRESETS: ChannelPreset[] = [
     frameHeight: 1000,
     aspectRatioFamily: 'square',
     geometryFamily: 'square-1x1',
+    fallbackPolicy: 'verified-or-generated',
     storageLabelSupported: true,
     badgeSupported: true,
   },
@@ -245,6 +273,7 @@ export const CHANNEL_PRESETS: ChannelPreset[] = [
     frameHeight: 1000,
     aspectRatioFamily: 'square',
     geometryFamily: 'square-1x1',
+    fallbackPolicy: 'verified-or-generated',
     storageLabelSupported: true,
     badgeSupported: true,
   },
@@ -256,6 +285,7 @@ export const CHANNEL_PRESETS: ChannelPreset[] = [
     frameHeight: 1000,
     aspectRatioFamily: 'square',
     geometryFamily: 'square-1x1',
+    fallbackPolicy: 'verified-or-generated',
     storageLabelSupported: true,
     badgeSupported: true,
   },

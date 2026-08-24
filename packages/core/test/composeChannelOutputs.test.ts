@@ -90,6 +90,7 @@ const products: Product[] = [
       frameHeight: 288,
       aspectRatioFamily: 'wide',
       geometryFamily: 'wide-5x2',
+      fallbackPolicy: 'verified-or-generated',
       storageLabelSupported: true,
       badgeSupported: true,
     },
@@ -147,7 +148,35 @@ const products: Product[] = [
   console.log('  ✓ geometryFamily가 다르면(wide-16x9 vs wide-2x1) 같은 슬롯 수라도 다른 verified Layout이 선택됨');
 }
 
-// 6) LayoutDefinition의 aspectRatioFamilies 조건 자체가 이미 "채널별 verified 우선, 없으면
+// 6) verified-only 정책(토스 600x240, 실제 데이터): 검증된 Layout이 없으면 generated로
+//    떨어지지 않고 reviewRequired(VERIFIED_ONLY_NO_VERIFIED_LAYOUT)여야 하며, error가 아니다.
+//    같은 채널의 다른 output(1000x1000, verified-or-generated 정책)은 영향을 받지 않고
+//    정상적으로 LAYOUT_02(verified/ready)여야 한다 — output 단위 독립성(#7)이 정책이 달라도
+//    그대로 유지됨을 확인.
+{
+  const result = composeChannelOutputs(
+    { items: [{ productId: 'p-beef', quantity: 3 }], channelId: 'toss' },
+    { products, channelPresets: CHANNEL_PRESETS, layouts: LAYOUTS },
+  );
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.equal(result.outputs.length, 2);
+    const square = result.outputs.find((o) => o.channelPresetId === 'toss-1000x1000')!;
+    const wide = result.outputs.find((o) => o.channelPresetId === 'toss-600x240')!;
+
+    assert.equal(square.result.ok, true);
+    assert.equal(square.result.ok && square.result.plan.layoutKey, 'LAYOUT_02');
+    assert.equal(square.result.ok && square.result.plan.layoutSource.kind, 'verified');
+    assert.equal(square.result.ok && square.result.plan.reviewRequired, false);
+
+    assert.equal(wide.result.ok, false);
+    assert.equal(!wide.result.ok && wide.result.reviewRequired, true);
+    assert.equal(!wide.result.ok && wide.result.reason, 'VERIFIED_ONLY_NO_VERIFIED_LAYOUT');
+  }
+  console.log('  ✓ 토스 600x240(verified-only) 검증된 Layout 없음 -> reviewRequired(error 아님), 1000x1000은 영향 없이 verified/ready');
+}
+
+// 7) LayoutDefinition의 aspectRatioFamilies 조건 자체가 이미 "채널별 verified 우선, 없으면
 //    generated fallback"을 만족시킨다는 것을 selectLayout 단계에서도 재확인 — LAYOUT_02는
 //    aspectRatioFamilies:['square']만 match하므로 wide 기준으로는 애초에 후보에서 제외된다.
 {

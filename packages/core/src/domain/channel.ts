@@ -9,6 +9,17 @@ export type AspectRatioFamily = 'square' | 'wide' | 'portrait';
  */
 export type GeometryFamily = 'square-1x1' | 'wide-16x9' | 'wide-2x1' | 'wide-5x2';
 
+/**
+ * verified Layout이 없을 때 이 채널 규격이 generated fallback을 허용하는지 정하는 정책.
+ * - 'verified-or-generated'(기본): 검증된 Layout이 없으면 family 공식으로 generated
+ *   fallback을 시도한다(기존 정책 그대로).
+ * - 'verified-only': 실제 디자인이 "N개 균일 상품 슬롯" 같은 일반적인 구조가 아니라 이
+ *   preset 고유의 구조(예: 토스 600x240의 hero 이미지 + 아이콘 + 소형 슬롯 혼합)라서,
+ *   generic한 family 공식을 적용할 수 없는 경우에 쓴다. 검증된 Layout이 없으면 자동 생성을
+ *   시도하지 않고 reviewRequired로 사람이 수동 처리하게 한다.
+ */
+export type ChannelFallbackPolicy = 'verified-or-generated' | 'verified-only';
+
 export interface Channel {
   id: string;
   label: string;
@@ -21,6 +32,7 @@ export interface ChannelPreset {
   frameHeight: number;
   aspectRatioFamily: AspectRatioFamily;
   geometryFamily: GeometryFamily;
+  fallbackPolicy: ChannelFallbackPolicy;
   storageLabelSupported: boolean;
   badgeSupported: boolean;
 }

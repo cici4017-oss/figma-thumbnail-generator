@@ -171,6 +171,13 @@
         message: "staged \uC378\uB124\uC77C\uC740 \uAC80\uC99D\uB41C(verified) Layout\uB9CC \uC0AC\uC6A9\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4(\uC790\uB3D9 \uC0DD\uC131 \uAE08\uC9C0). \uD574\uB2F9 \uC2AC\uB86F \uAD6C\uC131\uC758 \uAC80\uC99D\uB41C Layout\uC774 \uC5C6\uC5B4 \uAC80\uD1A0\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4."
       };
     }
+    if (criteria.fallbackPolicy === "verified-only") {
+      return {
+        status: "reviewRequired",
+        reason: "VERIFIED_ONLY_NO_VERIFIED_LAYOUT",
+        message: "\uC774 \uCC44\uB110 \uADDC\uACA9\uC740 verified-only \uC815\uCC45\uC774 \uC801\uC6A9\uB418\uC5B4 \uC788\uC5B4(\uCC44\uB110 \uACE0\uC720 \uAD6C\uC870\uB77C generic\uD55C family \uACF5\uC2DD\uC744 \uC801\uC6A9\uD560 \uC218 \uC5C6\uC74C) \uAC80\uC99D\uB41C(verified) Layout\uC774 \uC5C6\uC73C\uBA74 \uC790\uB3D9 \uC0DD\uC131\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uD574\uB2F9 \uC2AC\uB86F \uAD6C\uC131\uC758 \uAC80\uC99D\uB41C Layout\uC774 \uC5C6\uC5B4 \uAC80\uD1A0\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4."
+      };
+    }
     const fallback = generateFallbackLayout({ slotCount: criteria.totalQuantity });
     if (!fallback.ok) {
       return { status: "error", reason: fallback.reason, message: fallback.message };
@@ -241,7 +248,8 @@
         channelId: channelPreset.channelId,
         aspectRatioFamily: channelPreset.aspectRatioFamily,
         geometryFamily: channelPreset.geometryFamily,
-        thumbnailType
+        thumbnailType,
+        fallbackPolicy: channelPreset.fallbackPolicy
       },
       deps.layouts
     );
@@ -293,6 +301,7 @@
       frameHeight: 1e3,
       aspectRatioFamily: "square",
       geometryFamily: "square-1x1",
+      fallbackPolicy: "verified-or-generated",
       storageLabelSupported: true,
       badgeSupported: true
     },
@@ -303,6 +312,7 @@
       frameHeight: 1e3,
       aspectRatioFamily: "square",
       geometryFamily: "square-1x1",
+      fallbackPolicy: "verified-or-generated",
       storageLabelSupported: true,
       badgeSupported: true
     },
@@ -315,6 +325,7 @@
       frameHeight: 422,
       aspectRatioFamily: "wide",
       geometryFamily: "wide-16x9",
+      fallbackPolicy: "verified-or-generated",
       storageLabelSupported: true,
       badgeSupported: true
     },
@@ -325,6 +336,7 @@
       frameHeight: 1e3,
       aspectRatioFamily: "square",
       geometryFamily: "square-1x1",
+      fallbackPolicy: "verified-or-generated",
       storageLabelSupported: true,
       badgeSupported: true
     },
@@ -336,6 +348,7 @@
       frameHeight: 350,
       aspectRatioFamily: "wide",
       geometryFamily: "wide-16x9",
+      fallbackPolicy: "verified-or-generated",
       storageLabelSupported: true,
       badgeSupported: true
     },
@@ -346,6 +359,7 @@
       frameHeight: 1e3,
       aspectRatioFamily: "square",
       geometryFamily: "square-1x1",
+      fallbackPolicy: "verified-or-generated",
       storageLabelSupported: true,
       badgeSupported: true
     },
@@ -353,12 +367,16 @@
       // 600x240 = 2.5:1 — hero 배경 이미지 + 마스크 아이콘 + N개 소형 슬롯이라는 독특한 구조
       // (다른 wide처럼 균일 슬롯 가로 배치가 아님, 69:2553/69:2588/69:2601 조사 결과). 다른
       // wide 규격과 다른 별도 geometryFamily(wide-5x2)로 분리 — verified Layout 미등록.
+      // fallbackPolicy를 'verified-only'로 설정 — 채널 고유 구조라 generic family 공식으로
+      // generated fallback을 만들면 실제 디자인과 전혀 다른 결과가 나오므로, verified Layout이
+      // 없으면 자동 생성하지 않고 reviewRequired로 사람이 수동 처리하게 한다.
       id: "toss-600x240",
       channelId: "toss",
       frameWidth: 600,
       frameHeight: 240,
       aspectRatioFamily: "wide",
       geometryFamily: "wide-5x2",
+      fallbackPolicy: "verified-only",
       storageLabelSupported: true,
       badgeSupported: true
     },
@@ -369,6 +387,7 @@
       frameHeight: 1e3,
       aspectRatioFamily: "square",
       geometryFamily: "square-1x1",
+      fallbackPolicy: "verified-or-generated",
       storageLabelSupported: true,
       badgeSupported: true
     },
@@ -380,6 +399,7 @@
       frameHeight: 400,
       aspectRatioFamily: "wide",
       geometryFamily: "wide-16x9",
+      fallbackPolicy: "verified-or-generated",
       storageLabelSupported: true,
       badgeSupported: true
     },
@@ -390,6 +410,7 @@
       frameHeight: 1e3,
       aspectRatioFamily: "square",
       geometryFamily: "square-1x1",
+      fallbackPolicy: "verified-or-generated",
       storageLabelSupported: true,
       badgeSupported: true
     },
@@ -404,6 +425,7 @@
       frameHeight: 360,
       aspectRatioFamily: "wide",
       geometryFamily: "wide-2x1",
+      fallbackPolicy: "verified-or-generated",
       storageLabelSupported: true,
       badgeSupported: true
     },
@@ -415,6 +437,7 @@
       frameHeight: 1e3,
       aspectRatioFamily: "square",
       geometryFamily: "square-1x1",
+      fallbackPolicy: "verified-or-generated",
       storageLabelSupported: true,
       badgeSupported: true
     },
@@ -425,6 +448,7 @@
       frameHeight: 1e3,
       aspectRatioFamily: "square",
       geometryFamily: "square-1x1",
+      fallbackPolicy: "verified-or-generated",
       storageLabelSupported: true,
       badgeSupported: true
     },
@@ -435,6 +459,7 @@
       frameHeight: 1e3,
       aspectRatioFamily: "square",
       geometryFamily: "square-1x1",
+      fallbackPolicy: "verified-or-generated",
       storageLabelSupported: true,
       badgeSupported: true
     },
@@ -445,6 +470,7 @@
       frameHeight: 1e3,
       aspectRatioFamily: "square",
       geometryFamily: "square-1x1",
+      fallbackPolicy: "verified-or-generated",
       storageLabelSupported: true,
       badgeSupported: true
     },
@@ -455,6 +481,7 @@
       frameHeight: 1e3,
       aspectRatioFamily: "square",
       geometryFamily: "square-1x1",
+      fallbackPolicy: "verified-or-generated",
       storageLabelSupported: true,
       badgeSupported: true
     },
@@ -465,6 +492,7 @@
       frameHeight: 1e3,
       aspectRatioFamily: "square",
       geometryFamily: "square-1x1",
+      fallbackPolicy: "verified-or-generated",
       storageLabelSupported: true,
       badgeSupported: true
     },
@@ -475,6 +503,7 @@
       frameHeight: 1e3,
       aspectRatioFamily: "square",
       geometryFamily: "square-1x1",
+      fallbackPolicy: "verified-or-generated",
       storageLabelSupported: true,
       badgeSupported: true
     },
@@ -485,6 +514,7 @@
       frameHeight: 1e3,
       aspectRatioFamily: "square",
       geometryFamily: "square-1x1",
+      fallbackPolicy: "verified-or-generated",
       storageLabelSupported: true,
       badgeSupported: true
     },
@@ -496,6 +526,7 @@
       frameHeight: 1e3,
       aspectRatioFamily: "square",
       geometryFamily: "square-1x1",
+      fallbackPolicy: "verified-or-generated",
       storageLabelSupported: true,
       badgeSupported: true
     },
@@ -507,6 +538,7 @@
       frameHeight: 1e3,
       aspectRatioFamily: "square",
       geometryFamily: "square-1x1",
+      fallbackPolicy: "verified-or-generated",
       storageLabelSupported: true,
       badgeSupported: true
     },
@@ -518,6 +550,7 @@
       frameHeight: 1e3,
       aspectRatioFamily: "square",
       geometryFamily: "square-1x1",
+      fallbackPolicy: "verified-or-generated",
       storageLabelSupported: true,
       badgeSupported: true
     }

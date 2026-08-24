@@ -1,4 +1,4 @@
-import type { AspectRatioFamily, GeometryFamily } from '../domain/channel';
+import type { AspectRatioFamily, ChannelFallbackPolicy, GeometryFamily } from '../domain/channel';
 import type { ProductGroupId } from '../domain/product';
 import type { ThumbnailType } from '../domain/thumbnailType';
 import { type LayoutDefinition, getGiftSlotCount, getSaleSlotCount } from '../domain/layout';
@@ -15,6 +15,9 @@ export interface LayoutSelectionCriteria {
   /** aspectRatioFamily보다 세분화된 실제 비율. ChannelPreset.geometryFamily에서 그대로 옴. */
   geometryFamily: GeometryFamily;
   thumbnailType: ThumbnailType;
+  /** ChannelPreset.fallbackPolicy에서 그대로 옴. selectLayout 자체는 이 값을 쓰지 않고
+   * resolveLayout이 generated fallback 시도 여부를 정할 때만 참조한다. */
+  fallbackPolicy: ChannelFallbackPolicy;
 }
 
 export type SelectLayoutFailureReason =

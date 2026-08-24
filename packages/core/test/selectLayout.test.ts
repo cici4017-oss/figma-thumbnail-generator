@@ -53,6 +53,7 @@ const baseCriteria: LayoutSelectionCriteria = {
   channelId: 'naver',
   aspectRatioFamily: 'square',
   geometryFamily: 'square-1x1',
+  fallbackPolicy: 'verified-or-generated',
   thumbnailType: 'basic',
 };
 

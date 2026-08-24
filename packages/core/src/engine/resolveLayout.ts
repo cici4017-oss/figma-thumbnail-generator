@@ -18,11 +18,17 @@ import {
  * - thumbnailType이 staged인 요청은 generated Layout을 절대 쓸 수 없다. 검증된 staged
  *   Layout이 없으면 reviewRequired.
  * - gift가 포함된 요청도 generated Layout을 쓸 수 없다. 검증된 Layout이 없으면 reviewRequired.
- * - 위 두 reviewRequired 조건에 해당하지 않을 때만(=basic이고 gift 없음) generated fallback을
- *   시도한다.
+ * - channelPreset.fallbackPolicy가 'verified-only'인 규격(예: 토스 600x240 — hero 이미지 +
+ *   아이콘 + 소형 슬롯이 섞인 채널 고유 구조라 generic family 공식을 적용할 수 없음)도
+ *   generated Layout을 쓸 수 없다. 검증된 Layout이 없으면 reviewRequired.
+ * - 위 세 reviewRequired 조건에 해당하지 않을 때만(=basic, gift 없음, verified-or-generated
+ *   정책) generated fallback을 시도한다.
  */
 
-export type ReviewRequiredReason = 'STAGED_NO_VERIFIED_LAYOUT' | 'GIFT_NO_VERIFIED_LAYOUT';
+export type ReviewRequiredReason =
+  | 'STAGED_NO_VERIFIED_LAYOUT'
+  | 'GIFT_NO_VERIFIED_LAYOUT'
+  | 'VERIFIED_ONLY_NO_VERIFIED_LAYOUT';
 
 export type ResolveLayoutErrorReason = 'AMBIGUOUS_LAYOUT_MATCH' | GenerateFallbackLayoutFailureReason;
 
@@ -65,6 +71,17 @@ export function resolveLayout(
       reason: 'STAGED_NO_VERIFIED_LAYOUT',
       message:
         'staged 썸네일은 검증된(verified) Layout만 사용할 수 있습니다(자동 생성 금지). ' +
+        '해당 슬롯 구성의 검증된 Layout이 없어 검토가 필요합니다.',
+    };
+  }
+
+  if (criteria.fallbackPolicy === 'verified-only') {
+    return {
+      status: 'reviewRequired',
+      reason: 'VERIFIED_ONLY_NO_VERIFIED_LAYOUT',
+      message:
+        '이 채널 규격은 verified-only 정책이 적용되어 있어(채널 고유 구조라 generic한 ' +
+        'family 공식을 적용할 수 없음) 검증된(verified) Layout이 없으면 자동 생성하지 않습니다. ' +
         '해당 슬롯 구성의 검증된 Layout이 없어 검토가 필요합니다.',
     };
   }
