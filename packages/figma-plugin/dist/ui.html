@@ -52022,6 +52022,94 @@
     return rows;
   }
 
+  // ../core/src/import/clipboardTableReader.ts
+  var CLIPBOARD_COLUMNS = [
+    "workId",
+    "seq",
+    "productGroup",
+    "channel",
+    "productName",
+    "quantity",
+    "badge",
+    "note"
+  ];
+  var HEADER_LABELS = {
+    workId: "\uC791\uC5C5ID",
+    seq: "\uC21C\uBC88",
+    productGroup: "\uC0C1\uD488\uAD70",
+    channel: "\uCC44\uB110",
+    productName: "\uC0C1\uD488\uBA85",
+    quantity: "\uC218\uB7C9",
+    badge: "\uB531\uC9C0\uC5EC\uBD80",
+    note: "\uBE44\uACE0"
+  };
+  var DEFAULT_COLUMN_ORDER = {
+    workId: 0,
+    seq: 1,
+    productGroup: 2,
+    channel: 3,
+    productName: 4,
+    quantity: 5,
+    badge: 6,
+    note: 7
+  };
+  function splitClipboardText(text) {
+    const normalized = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+    const lines = normalized.split("\n");
+    while (lines.length > 0 && lines[lines.length - 1].trim() === "") lines.pop();
+    return lines.map((line) => line.split("	"));
+  }
+  function detectHeaderColumns(firstRow) {
+    const found = {};
+    firstRow.forEach((cell, i) => {
+      const trimmed = cell.trim();
+      for (const key of CLIPBOARD_COLUMNS) {
+        if (trimmed === HEADER_LABELS[key]) found[key] = i;
+      }
+    });
+    const hasAll = CLIPBOARD_COLUMNS.every((k) => found[k] !== void 0);
+    return hasAll ? found : null;
+  }
+  function toNumberOrNull2(raw) {
+    const trimmed = raw.trim();
+    if (trimmed === "") return null;
+    const n = Number(trimmed);
+    return Number.isFinite(n) ? n : null;
+  }
+  function parseClipboardTable(text, products = PRODUCTS) {
+    const grid = splitClipboardText(text);
+    if (grid.length === 0) return [];
+    const headerColumns = detectHeaderColumns(grid[0]);
+    const columns = headerColumns != null ? headerColumns : DEFAULT_COLUMN_ORDER;
+    const dataRows = headerColumns ? grid.slice(1) : grid;
+    const headerRowOffset = headerColumns ? 2 : 1;
+    const nameToCode = new Map(products.map((p) => [p.name, p.code]));
+    const rows = [];
+    dataRows.forEach((cells, i) => {
+      var _a;
+      if (cells.every((c) => c.trim() === "")) return;
+      const get = (key) => {
+        var _a2;
+        return ((_a2 = cells[columns[key]]) != null ? _a2 : "").trim();
+      };
+      const productName = get("productName");
+      const note = get("note");
+      rows.push({
+        rowIndex: i + headerRowOffset,
+        workId: get("workId"),
+        seq: toNumberOrNull2(get("seq")),
+        productGroup: get("productGroup"),
+        channel: get("channel"),
+        productName,
+        productCode: (_a = nameToCode.get(productName)) != null ? _a : "",
+        quantity: toNumberOrNull2(get("quantity")),
+        badgeRaw: get("badge") || null,
+        note: note === "" ? null : note
+      });
+    });
+    return rows;
+  }
+
   // ../core/src/import/workOrderParser.ts
   var PRODUCT_GROUP_LABELS = {
     \uAC04\uD3B8\uC2DD: "simple-meal",
@@ -52863,6 +52951,7 @@
     const [exporting, setExporting] = (0, import_react.useState)(false);
     const [exportNotice, setExportNotice] = (0, import_react.useState)(null);
     const [downloadingTemplate, setDownloadingTemplate] = (0, import_react.useState)(false);
+    const [clipboardText, setClipboardText] = (0, import_react.useState)("");
     (0, import_react.useEffect)(() => {
       window.onmessage = (event) => {
         const msg = event.data.pluginMessage;
@@ -52911,6 +53000,34 @@
         setDownloadingTemplate(false);
       }
     };
+    const processClipboardText = (text) => {
+      setError(null);
+      setRenderResult(null);
+      setExportNotice(null);
+      if (!text.trim()) {
+        setError("\uBD99\uC5EC\uB123\uC740 \uB0B4\uC6A9\uC774 \uBE44\uC5B4 \uC788\uC2B5\uB2C8\uB2E4.");
+        return;
+      }
+      try {
+        const rows = parseClipboardTable(text);
+        if (rows.length === 0) {
+          setError("\uBD99\uC5EC\uB123\uC740 \uB0B4\uC6A9\uC5D0\uC11C \uC77D\uC744 \uC218 \uC788\uB294 \uD589\uC744 \uCC3E\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC791\uC5C5ID~\uBE44\uACE0 \uC5F4\uC744 \uD3EC\uD568\uD574 \uBCF5\uC0AC\uD588\uB294\uC9C0 \uD655\uC778\uD574\uC8FC\uC138\uC694.");
+          return;
+        }
+        const parsedBatch = parseWorkOrderRows(rows, "\uD074\uB9BD\uBCF4\uB4DC \uBD99\uC5EC\uB123\uAE30");
+        setBatch(parsedBatch);
+        setPreview(composeBatchPreview(parsedBatch));
+      } catch (err) {
+        setError(`\uBD99\uC5EC\uB123\uC740 \uD45C\uB97C \uC77D\uB294 \uC911 \uC624\uB958: ${err.message}`);
+      }
+    };
+    const onClipboardPaste = (e) => {
+      const text = e.clipboardData.getData("text/plain");
+      if (!text) return;
+      e.preventDefault();
+      setClipboardText(text);
+      processClipboardText(text);
+    };
     const onFileChange = async (e) => {
       var _a2;
       const file = (_a2 = e.target.files) == null ? void 0 : _a2[0];
@@ -52920,6 +53037,7 @@
       setBatch(null);
       setRenderResult(null);
       setExportNotice(null);
+      setClipboardText("");
       try {
         const bytes = await file.arrayBuffer();
         const rows = await readWorkOrderSheet(bytes);
@@ -52949,28 +53067,46 @@
     const generatedCount = selectExportableOutputs(renderResult).length;
     const visibleRows = (_a = preview == null ? void 0 : preview.rows.filter((r) => filter === "all" || r.overallStatus === filter)) != null ? _a : [];
     return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { style: { margin: "4px 0", color: "#666" }, children: '\uD45C\uC900 \uC694\uCCAD\uC11C(01_\uC791\uC5C5\uC694\uCCAD)\uB97C \uC120\uD0DD\uD558\uBA74 \uC791\uC5C5ID \uAE30\uC900\uC73C\uB85C \uBB36\uACE0, \uCC44\uB110\uC5D0 \uB4F1\uB85D\uB41C \uCD9C\uB825 \uADDC\uACA9(preset)\uB9C8\uB2E4 Layout \uC120\uD0DD(verified/generated fallback)\uAE4C\uC9C0 \uC2DC\uBBAC\uB808\uC774\uC158\uD55C \uBBF8\uB9AC\uBCF4\uAE30\uB97C \uBCF4\uC5EC\uC90D\uB2C8\uB2E4. \uD55C \uCC44\uB110\uC774 \uC5EC\uB7EC \uADDC\uACA9(\uC608: \uCE74\uCE74\uC624 1000\xD71000 + 750\xD7422)\uC744 \uAC00\uC9C0\uBA74 \uC791\uC5C5ID \uD558\uB098\uAC00 \uADDC\uACA9 \uC218\uB9CC\uD07C \uCD9C\uB825\uC73C\uB85C \uB098\uB258\uACE0, \uAC01 \uCD9C\uB825\uC740 \uC11C\uB85C \uB3C5\uB9BD\uC801\uC73C\uB85C \uD310\uC815\uB429\uB2C8\uB2E4. \uC544\uB798 "Figma\uC5D0 \uC77C\uAD04 \uC0DD\uC131"\uC740 \uBBF8\uB9AC\uBCF4\uAE30 \uD310\uC815\uC744 \uADF8\uB300\uB85C \uB2E4\uC2DC \uACC4\uC0B0\uD574 \uC2E4\uC81C\uB85C clone\uC744 \uB9CC\uB4ED\uB2C8\uB2E4 \u2014 \uAE30\uC874 \uC6D0\uBCF8/\uD15C\uD50C\uB9BF \uD504\uB808\uC784\uC740 \uC218\uC815\uD558\uC9C0 \uC54A\uACE0, \uACB0\uACFC\uB294 AUTO_GENERATED_VERIFIED / AUTO_GENERATED_REVIEW \uD398\uC774\uC9C0\uC5D0 \uC815\uB9AC\uB429\uB2C8\uB2E4.' }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", alignItems: "center", gap: 10, margin: "8px 0" }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { onClick: onDownloadTemplate, disabled: downloadingTemplate, children: downloadingTemplate ? "\uC591\uC2DD \uB9CC\uB4DC\uB294 \uC911\u2026" : "Excel \uC591\uC2DD \uB2E4\uC6B4\uB85C\uB4DC" }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
-          "label",
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { style: { margin: "4px 0", color: "#666" }, children: '\uC791\uC5C5 \uBAA9\uB85D\uC744 \uB123\uC73C\uBA74 \uC791\uC5C5ID \uAE30\uC900\uC73C\uB85C \uBB36\uACE0, \uCC44\uB110\uC5D0 \uB4F1\uB85D\uB41C \uCD9C\uB825 \uADDC\uACA9(preset)\uB9C8\uB2E4 Layout \uC120\uD0DD(verified/generated fallback)\uAE4C\uC9C0 \uC2DC\uBBAC\uB808\uC774\uC158\uD55C \uBBF8\uB9AC\uBCF4\uAE30\uB97C \uBCF4\uC5EC\uC90D\uB2C8\uB2E4. \uD55C \uCC44\uB110\uC774 \uC5EC\uB7EC \uADDC\uACA9(\uC608: \uCE74\uCE74\uC624 1000\xD71000 + 750\xD7422)\uC744 \uAC00\uC9C0\uBA74 \uC791\uC5C5ID \uD558\uB098\uAC00 \uADDC\uACA9 \uC218\uB9CC\uD07C \uCD9C\uB825\uC73C\uB85C \uB098\uB258\uACE0, \uAC01 \uCD9C\uB825\uC740 \uC11C\uB85C \uB3C5\uB9BD\uC801\uC73C\uB85C \uD310\uC815\uB429\uB2C8\uB2E4. \uC544\uB798 "Figma\uC5D0 \uC77C\uAD04 \uC0DD\uC131"\uC740 \uBBF8\uB9AC\uBCF4\uAE30 \uD310\uC815\uC744 \uADF8\uB300\uB85C \uB2E4\uC2DC \uACC4\uC0B0\uD574 \uC2E4\uC81C\uB85C clone\uC744 \uB9CC\uB4ED\uB2C8\uB2E4 \u2014 \uAE30\uC874 \uC6D0\uBCF8/\uD15C\uD50C\uB9BF \uD504\uB808\uC784\uC740 \uC218\uC815\uD558\uC9C0 \uC54A\uACE0, \uACB0\uACFC\uB294 AUTO_GENERATED_VERIFIED / AUTO_GENERATED_REVIEW \uD398\uC774\uC9C0\uC5D0 \uC815\uB9AC\uB429\uB2C8\uB2E4.' }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { border: "1px solid #18a0fb", borderRadius: 6, padding: 10, margin: "8px 0" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { style: { margin: "0 0 6px 0", fontWeight: 600 }, children: "Excel \uD45C \uBD99\uC5EC\uB123\uAE30" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { style: { margin: "0 0 6px 0", fontSize: 11, color: "#666" }, children: "\uD68C\uC0AC Excel\uC5D0\uC11C \uC791\uC5C5 \uD589(\uC791\uC5C5ID~\uBE44\uACE0 \uC5F4)\uC744 \uB4DC\uB798\uADF8\uD574 Ctrl+C\uD55C \uB4A4, \uC544\uB798 \uCE78\uC744 \uD074\uB9AD\uD558\uACE0 Ctrl+V\uB9CC \uD558\uBA74 \uBC14\uB85C \uBBF8\uB9AC\uBCF4\uAE30\uAC00 \uB9CC\uB4E4\uC5B4\uC9D1\uB2C8\uB2E4. \uD30C\uC77C\uC744 \uB530\uB85C \uC800\uC7A5\uD558\uAC70\uB098 \uC0AC\uC678\uB85C \uBC18\uCD9C\uD560 \uD544\uC694\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4. \uD5E4\uB354(\uCCAB \uC904 \uCEEC\uB7FC\uBA85)\uB97C \uD568\uAED8 \uBCF5\uC0AC\uD574\uB3C4, \uC548 \uD574\uB3C4 \uB429\uB2C8\uB2E4." }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+          "textarea",
           {
-            style: {
-              display: "inline-block",
-              padding: "4px 10px",
-              border: "1px solid #888",
-              borderRadius: 4,
-              cursor: "pointer",
-              background: "#f5f5f5"
-            },
-            children: [
-              "\uC791\uC131\uD55C Excel \uC5C5\uB85C\uB4DC",
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "file", accept: ".xlsx", onChange: onFileChange, style: { display: "none" } })
-            ]
+            value: clipboardText,
+            onChange: (e) => setClipboardText(e.target.value),
+            onPaste: onClipboardPaste,
+            placeholder: "Excel\uC5D0\uC11C \uC791\uC5C5 \uD589\uC744 \uBCF5\uC0AC\uD55C \uB4A4 \uC5EC\uAE30\uC5D0 \uBD99\uC5EC\uB123\uC73C\uC138\uC694 (Ctrl+V)",
+            style: { width: "100%", height: 110, boxSizing: "border-box", fontFamily: "monospace", fontSize: 11 }
           }
-        )
+        ),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: 6 }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { onClick: () => processClipboardText(clipboardText), disabled: !clipboardText.trim(), children: "\uBD99\uC5EC\uB123\uC740 \uB0B4\uC6A9\uC73C\uB85C \uBBF8\uB9AC\uBCF4\uAE30 \uB9CC\uB4E4\uAE30" }) })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { style: { margin: "0 0 8px 0", fontSize: 11, color: "#666" }, children: 'Excel \uD30C\uC77C\uC774 \uC5C6\uB2E4\uBA74 \uBA3C\uC800 "Excel \uC591\uC2DD \uB2E4\uC6B4\uB85C\uB4DC"\uB85C \uBC1B\uC544 \uC791\uC131\uD55C \uB4A4, \uAC19\uC740 \uD30C\uC77C\uC744 "\uC791\uC131\uD55C Excel \uC5C5\uB85C\uB4DC"\uC5D0 \uC62C\uB824\uC8FC\uC138\uC694. \uC0C1\uD488\uBAA9\uB85D/\uCC44\uB110\uBAA9\uB85D\uC740 \uD56D\uC0C1 \uCD5C\uC2E0 \uB370\uC774\uD130\uB85C \uC790\uB3D9 \uCC44\uC6CC\uC9D1\uB2C8\uB2E4.' }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("details", { style: { margin: "8px 0" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("summary", { style: { cursor: "pointer", color: "#666" }, children: "\uBCF4\uC870 \uAE30\uB2A5: Excel \uD30C\uC77C\uB85C \uC9C4\uD589(\uC0AC\uC678 \uBC18\uCD9C \uC2B9\uC778\uC774 \uD544\uC694\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4)" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", alignItems: "center", gap: 10, margin: "8px 0" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { onClick: onDownloadTemplate, disabled: downloadingTemplate, children: downloadingTemplate ? "\uC591\uC2DD \uB9CC\uB4DC\uB294 \uC911\u2026" : "Excel \uC591\uC2DD \uB2E4\uC6B4\uB85C\uB4DC" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+            "label",
+            {
+              style: {
+                display: "inline-block",
+                padding: "4px 10px",
+                border: "1px solid #888",
+                borderRadius: 4,
+                cursor: "pointer",
+                background: "#f5f5f5"
+              },
+              children: [
+                "\uC791\uC131\uD55C Excel \uC5C5\uB85C\uB4DC",
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "file", accept: ".xlsx", onChange: onFileChange, style: { display: "none" } })
+              ]
+            }
+          )
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { style: { margin: "0 0 8px 0", fontSize: 11, color: "#666" }, children: 'Excel \uD30C\uC77C\uC774 \uC5C6\uB2E4\uBA74 \uBA3C\uC800 "Excel \uC591\uC2DD \uB2E4\uC6B4\uB85C\uB4DC"\uB85C \uBC1B\uC544 \uC791\uC131\uD55C \uB4A4, \uAC19\uC740 \uD30C\uC77C\uC744 "\uC791\uC131\uD55C Excel \uC5C5\uB85C\uB4DC"\uC5D0 \uC62C\uB824\uC8FC\uC138\uC694. \uC0C1\uD488\uBAA9\uB85D/\uCC44\uB110\uBAA9\uB85D\uC740 \uD56D\uC0C1 \uCD5C\uC2E0 \uB370\uC774\uD130\uB85C \uC790\uB3D9 \uCC44\uC6CC\uC9D1\uB2C8\uB2E4.' })
+      ] }),
       error && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { style: { color: STATUS_COLOR.error }, children: error }),
       preview && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", { style: { marginTop: 12, marginBottom: 2 }, children: [

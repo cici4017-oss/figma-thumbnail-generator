@@ -7,6 +7,7 @@ import { PRODUCTS, CHANNELS } from '@thumbnail-generator/core';
 import {
   readWorkOrderSheet,
   parseWorkOrderRows,
+  parseClipboardTable,
   composeBatchPreview,
   buildWorkOrderTemplateWorkbook,
   type BatchGenerationRequest,
@@ -97,6 +98,7 @@ export function BatchPreview() {
   const [exporting, setExporting] = useState(false);
   const [exportNotice, setExportNotice] = useState<string | null>(null);
   const [downloadingTemplate, setDownloadingTemplate] = useState(false);
+  const [clipboardText, setClipboardText] = useState('');
 
   useEffect(() => {
     window.onmessage = (event: MessageEvent) => {
@@ -155,6 +157,39 @@ export function BatchPreview() {
     }
   };
 
+  // Excel 표 붙여넣기(회사 환경 기본 사용법) — 파일을 만들거나 서버로 보내지 않고, 클립보드
+  // 텍스트를 RawWorkOrderRow[]로 바꾼 뒤에는 xlsx 업로드 경로와 완전히 동일한 파이프라인
+  // (parseWorkOrderRows -> composeBatchPreview -> ... -> batchRenderer)을 그대로 탄다.
+  const processClipboardText = (text: string) => {
+    setError(null);
+    setRenderResult(null);
+    setExportNotice(null);
+    if (!text.trim()) {
+      setError('붙여넣은 내용이 비어 있습니다.');
+      return;
+    }
+    try {
+      const rows = parseClipboardTable(text);
+      if (rows.length === 0) {
+        setError('붙여넣은 내용에서 읽을 수 있는 행을 찾지 못했습니다. 작업ID~비고 열을 포함해 복사했는지 확인해주세요.');
+        return;
+      }
+      const parsedBatch = parseWorkOrderRows(rows, '클립보드 붙여넣기');
+      setBatch(parsedBatch);
+      setPreview(composeBatchPreview(parsedBatch));
+    } catch (err) {
+      setError(`붙여넣은 표를 읽는 중 오류: ${(err as Error).message}`);
+    }
+  };
+
+  const onClipboardPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const text = e.clipboardData.getData('text/plain');
+    if (!text) return;
+    e.preventDefault();
+    setClipboardText(text);
+    processClipboardText(text);
+  };
+
   const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -163,6 +198,7 @@ export function BatchPreview() {
     setBatch(null);
     setRenderResult(null);
     setExportNotice(null);
+    setClipboardText('');
     try {
       const bytes = await file.arrayBuffer();
       const rows = await readWorkOrderSheet(bytes);
@@ -202,36 +238,62 @@ export function BatchPreview() {
   return (
     <div>
       <p style={{ margin: '4px 0', color: '#666' }}>
-        표준 요청서(01_작업요청)를 선택하면 작업ID 기준으로 묶고, 채널에 등록된 출력
-        규격(preset)마다 Layout 선택(verified/generated fallback)까지 시뮬레이션한
-        미리보기를 보여줍니다. 한 채널이 여러 규격(예: 카카오 1000×1000 + 750×422)을 가지면
-        작업ID 하나가 규격 수만큼 출력으로 나뉘고, 각 출력은 서로 독립적으로 판정됩니다.
-        아래 "Figma에 일괄 생성"은 미리보기 판정을 그대로 다시 계산해 실제로 clone을 만듭니다 —
-        기존 원본/템플릿 프레임은 수정하지 않고, 결과는 AUTO_GENERATED_VERIFIED /
-        AUTO_GENERATED_REVIEW 페이지에 정리됩니다.
+        작업 목록을 넣으면 작업ID 기준으로 묶고, 채널에 등록된 출력 규격(preset)마다 Layout
+        선택(verified/generated fallback)까지 시뮬레이션한 미리보기를 보여줍니다. 한 채널이 여러
+        규격(예: 카카오 1000×1000 + 750×422)을 가지면 작업ID 하나가 규격 수만큼 출력으로 나뉘고,
+        각 출력은 서로 독립적으로 판정됩니다. 아래 "Figma에 일괄 생성"은 미리보기 판정을 그대로
+        다시 계산해 실제로 clone을 만듭니다 — 기존 원본/템플릿 프레임은 수정하지 않고, 결과는
+        AUTO_GENERATED_VERIFIED / AUTO_GENERATED_REVIEW 페이지에 정리됩니다.
       </p>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '8px 0' }}>
-        <button onClick={onDownloadTemplate} disabled={downloadingTemplate}>
-          {downloadingTemplate ? '양식 만드는 중…' : 'Excel 양식 다운로드'}
-        </button>
-        <label
-          style={{
-            display: 'inline-block',
-            padding: '4px 10px',
-            border: '1px solid #888',
-            borderRadius: 4,
-            cursor: 'pointer',
-            background: '#f5f5f5',
-          }}
-        >
-          작성한 Excel 업로드
-          <input type="file" accept=".xlsx" onChange={onFileChange} style={{ display: 'none' }} />
-        </label>
+
+      <div style={{ border: '1px solid #18a0fb', borderRadius: 6, padding: 10, margin: '8px 0' }}>
+        <p style={{ margin: '0 0 6px 0', fontWeight: 600 }}>Excel 표 붙여넣기</p>
+        <p style={{ margin: '0 0 6px 0', fontSize: 11, color: '#666' }}>
+          회사 Excel에서 작업 행(작업ID~비고 열)을 드래그해 Ctrl+C한 뒤, 아래 칸을 클릭하고
+          Ctrl+V만 하면 바로 미리보기가 만들어집니다. 파일을 따로 저장하거나 사외로 반출할 필요가
+          없습니다. 헤더(첫 줄 컬럼명)를 함께 복사해도, 안 해도 됩니다.
+        </p>
+        <textarea
+          value={clipboardText}
+          onChange={(e) => setClipboardText(e.target.value)}
+          onPaste={onClipboardPaste}
+          placeholder="Excel에서 작업 행을 복사한 뒤 여기에 붙여넣으세요 (Ctrl+V)"
+          style={{ width: '100%', height: 110, boxSizing: 'border-box', fontFamily: 'monospace', fontSize: 11 }}
+        />
+        <div style={{ marginTop: 6 }}>
+          <button onClick={() => processClipboardText(clipboardText)} disabled={!clipboardText.trim()}>
+            붙여넣은 내용으로 미리보기 만들기
+          </button>
+        </div>
       </div>
-      <p style={{ margin: '0 0 8px 0', fontSize: 11, color: '#666' }}>
-        Excel 파일이 없다면 먼저 "Excel 양식 다운로드"로 받아 작성한 뒤, 같은 파일을 "작성한 Excel
-        업로드"에 올려주세요. 상품목록/채널목록은 항상 최신 데이터로 자동 채워집니다.
-      </p>
+
+      <details style={{ margin: '8px 0' }}>
+        <summary style={{ cursor: 'pointer', color: '#666' }}>
+          보조 기능: Excel 파일로 진행(사외 반출 승인이 필요할 수 있습니다)
+        </summary>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '8px 0' }}>
+          <button onClick={onDownloadTemplate} disabled={downloadingTemplate}>
+            {downloadingTemplate ? '양식 만드는 중…' : 'Excel 양식 다운로드'}
+          </button>
+          <label
+            style={{
+              display: 'inline-block',
+              padding: '4px 10px',
+              border: '1px solid #888',
+              borderRadius: 4,
+              cursor: 'pointer',
+              background: '#f5f5f5',
+            }}
+          >
+            작성한 Excel 업로드
+            <input type="file" accept=".xlsx" onChange={onFileChange} style={{ display: 'none' }} />
+          </label>
+        </div>
+        <p style={{ margin: '0 0 8px 0', fontSize: 11, color: '#666' }}>
+          Excel 파일이 없다면 먼저 "Excel 양식 다운로드"로 받아 작성한 뒤, 같은 파일을 "작성한 Excel
+          업로드"에 올려주세요. 상품목록/채널목록은 항상 최신 데이터로 자동 채워집니다.
+        </p>
+      </details>
 
       {error && <p style={{ color: STATUS_COLOR.error }}>{error}</p>}
 
