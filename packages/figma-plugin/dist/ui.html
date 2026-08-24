@@ -49420,6 +49420,13 @@
     if (statuses.some((s) => s === "reviewRequired")) return "reviewRequired";
     return "ready";
   }
+  function countByStatus(statuses) {
+    return {
+      ready: statuses.filter((s) => s === "ready").length,
+      reviewRequired: statuses.filter((s) => s === "reviewRequired").length,
+      error: statuses.filter((s) => s === "error").length
+    };
+  }
   function composeRow(wo, products, channelPresets, layouts) {
     const base = {
       workId: wo.workId,
@@ -49489,14 +49496,15 @@
     const channelPresets = (_b = deps.channelPresets) != null ? _b : CHANNEL_PRESETS;
     const layouts = (_c = deps.layouts) != null ? _c : LAYOUTS;
     const rows = batch.workOrders.map((wo) => composeRow(wo, products, channelPresets, layouts));
+    const allOutputs = rows.flatMap((r) => r.outputs);
     return {
       sourceFileName: batch.sourceFileName,
       rows,
       summary: {
-        total: rows.length,
-        ready: rows.filter((r) => r.overallStatus === "ready").length,
-        reviewRequired: rows.filter((r) => r.overallStatus === "reviewRequired").length,
-        error: rows.filter((r) => r.overallStatus === "error").length
+        totalWorkOrders: rows.length,
+        totalOutputs: allOutputs.length,
+        workOrderStatusSummary: countByStatus(rows.map((r) => r.overallStatus)),
+        outputStatusSummary: countByStatus(allOutputs.map((o) => o.status))
       }
     };
   }
@@ -49545,16 +49553,29 @@
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "file", accept: ".xlsx", onChange: onFileChange }),
       error && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { style: { color: STATUS_COLOR.error }, children: error }),
       preview && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", { style: { marginTop: 12 }, children: [
-          "\uCD1D \uC791\uC5C5 ",
-          preview.summary.total,
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", { style: { marginTop: 12, marginBottom: 2 }, children: [
+          "\uC791\uC5C5ID ",
+          preview.summary.totalWorkOrders,
           "\uAC74 \u2014 \uC0DD\uC131\uAC00\uB2A5 ",
-          preview.summary.ready,
+          preview.summary.workOrderStatusSummary.ready,
+          " / \uAC80\uD1A0\uD544\uC694 ",
+          preview.summary.workOrderStatusSummary.reviewRequired,
+          " / \uC624\uB958",
+          " ",
+          preview.summary.workOrderStatusSummary.error
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", { style: { margin: 0, color: "#666" }, children: [
+          "\uC2E4\uC81C \uCD9C\uB825(\uC378\uB124\uC77C) ",
+          preview.summary.totalOutputs,
+          "\uAC74 \u2014 \uC0DD\uC131\uAC00\uB2A5",
+          " ",
+          preview.summary.outputStatusSummary.ready,
           " / \uAC80\uD1A0\uD544\uC694",
           " ",
-          preview.summary.reviewRequired,
-          " / \uC624\uB958 ",
-          preview.summary.error
+          preview.summary.outputStatusSummary.reviewRequired,
+          " / \uC624\uB958",
+          " ",
+          preview.summary.outputStatusSummary.error
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "flex", gap: 6, marginBottom: 8 }, children: ["all", "ready", "reviewRequired", "error"].map((s) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
           "button",

@@ -57,7 +57,15 @@ async function main() {
   const preview = composeBatchPreview(batch);
 
   assert.equal(preview.rows.length, 6);
-  assert.deepEqual(preview.summary, { total: 6, ready: 1, reviewRequired: 3, error: 2 });
+  // workOrder(작업ID) 단위 집계와 output(fan-out 이후 실제 생성될 썸네일) 단위 집계는 다르다.
+  // WO-P6(카카오)가 output 2개(square ready + wide reviewRequired)로 갈리기 때문에
+  // totalOutputs(4)가 totalWorkOrders(6)와 일치하지 않고, 집계 결과도 서로 다르다.
+  assert.deepEqual(preview.summary, {
+    totalWorkOrders: 6,
+    totalOutputs: 4,
+    workOrderStatusSummary: { ready: 1, reviewRequired: 3, error: 2 },
+    outputStatusSummary: { ready: 2, reviewRequired: 2, error: 0 },
+  });
 
   // 1) 단일 상품 verified -> 네이버는 preset 1개뿐이므로 output도 1개
   const p1 = byId(preview.rows, 'WO-P1');

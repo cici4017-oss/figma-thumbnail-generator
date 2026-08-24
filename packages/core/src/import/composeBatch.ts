@@ -62,11 +62,25 @@ export interface BatchPreviewRow {
   outputs: BatchPreviewOutput[];
 }
 
-export interface BatchPreviewSummary {
-  total: number;
+export interface BatchStatusCounts {
   ready: number;
   reviewRequired: number;
   error: number;
+}
+
+/**
+ * workOrder(작업ID) 단위 집계와 output(=fan-out 이후 실제 생성될 썸네일 단위) 집계는 서로
+ * 다른 수치다 — 하나의 작업ID가 채널 preset 수만큼 여러 output으로 갈리기 때문에
+ * totalWorkOrders와 totalOutputs가 다를 수 있고(예: 채널이 square+wide 둘 다면 작업ID 1개가
+ * output 2개), workOrderStatusSummary(overallStatus 기준)와 outputStatusSummary(output별
+ * status 기준)도 서로 다른 합계를 가질 수 있다. 실제로 생성될 썸네일 개수/상태를 보려면
+ * totalOutputs/outputStatusSummary를 봐야 한다.
+ */
+export interface BatchPreviewSummary {
+  totalWorkOrders: number;
+  totalOutputs: number;
+  workOrderStatusSummary: BatchStatusCounts;
+  outputStatusSummary: BatchStatusCounts;
 }
 
 export interface BatchPreviewResult {
@@ -87,6 +101,14 @@ function worstStatus(statuses: BatchPreviewStatus[]): BatchPreviewStatus {
   if (statuses.some((s) => s === 'error')) return 'error';
   if (statuses.some((s) => s === 'reviewRequired')) return 'reviewRequired';
   return 'ready';
+}
+
+function countByStatus(statuses: BatchPreviewStatus[]): BatchStatusCounts {
+  return {
+    ready: statuses.filter((s) => s === 'ready').length,
+    reviewRequired: statuses.filter((s) => s === 'reviewRequired').length,
+    error: statuses.filter((s) => s === 'error').length,
+  };
 }
 
 function composeRow(
@@ -185,15 +207,16 @@ export function composeBatchPreview(
   const channelPresets = deps.channelPresets ?? CHANNEL_PRESETS;
   const layouts = deps.layouts ?? LAYOUTS;
   const rows = batch.workOrders.map((wo) => composeRow(wo, products, channelPresets, layouts));
+  const allOutputs = rows.flatMap((r) => r.outputs);
 
   return {
     sourceFileName: batch.sourceFileName,
     rows,
     summary: {
-      total: rows.length,
-      ready: rows.filter((r) => r.overallStatus === 'ready').length,
-      reviewRequired: rows.filter((r) => r.overallStatus === 'reviewRequired').length,
-      error: rows.filter((r) => r.overallStatus === 'error').length,
+      totalWorkOrders: rows.length,
+      totalOutputs: allOutputs.length,
+      workOrderStatusSummary: countByStatus(rows.map((r) => r.overallStatus)),
+      outputStatusSummary: countByStatus(allOutputs.map((o) => o.status)),
     },
   };
 }

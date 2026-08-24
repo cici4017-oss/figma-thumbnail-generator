@@ -68,9 +68,16 @@ export function BatchPreview() {
 
       {preview && (
         <>
-          <p style={{ marginTop: 12 }}>
-            총 작업 {preview.summary.total}건 — 생성가능 {preview.summary.ready} / 검토필요{' '}
-            {preview.summary.reviewRequired} / 오류 {preview.summary.error}
+          <p style={{ marginTop: 12, marginBottom: 2 }}>
+            작업ID {preview.summary.totalWorkOrders}건 — 생성가능 {preview.summary.workOrderStatusSummary.ready} /
+            검토필요 {preview.summary.workOrderStatusSummary.reviewRequired} / 오류{' '}
+            {preview.summary.workOrderStatusSummary.error}
+          </p>
+          <p style={{ margin: 0, color: '#666' }}>
+            실제 출력(썸네일) {preview.summary.totalOutputs}건 — 생성가능{' '}
+            {preview.summary.outputStatusSummary.ready} / 검토필요{' '}
+            {preview.summary.outputStatusSummary.reviewRequired} / 오류{' '}
+            {preview.summary.outputStatusSummary.error}
           </p>
 
           <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>

@@ -95,12 +95,18 @@ async function main() {
   const elapsedMs = Date.now() - startedAt;
 
   assert.equal(preview.rows.length, 30, '작업ID 30건이 모두 생성되어야 함');
-  assert.deepEqual(preview.summary, { total: 30, ready: 15, reviewRequired: 11, error: 4 });
 
-  const totalOutputs = preview.rows.reduce((sum, r) => sum + r.outputs.length, 0);
-  assert.equal(totalOutputs, 34, '단일규격 18건×1 + 복수규격 8건×2 = 34개 output');
+  // workOrder(작업ID) 단위 집계 vs output(fan-out 이후 실제 생성될 썸네일) 단위 집계는
+  // 서로 다른 수치다 — 합계도 각각 30/34로 다르고, 상태 분포도 우연히 겹치지 않는 한 다르다.
+  // Batch Preview는 반드시 이 둘을 분리해서 보여줘야 한다(작업ID 요약 vs 실제 생성물 요약).
+  assert.equal(preview.summary.totalWorkOrders, 30);
+  assert.equal(preview.summary.totalOutputs, 34, '단일규격 18건×1 + 복수규격 8건×2 = 34개 output');
+  assert.deepEqual(preview.summary.workOrderStatusSummary, { ready: 15, reviewRequired: 11, error: 4 });
+  assert.deepEqual(preview.summary.outputStatusSummary, { ready: 22, reviewRequired: 11, error: 1 });
 
-  console.log(`  ⏱ composeBatchPreview(30건, output 34개): ${elapsedMs}ms`);
+  console.log(
+    `  ⏱ composeBatchPreview(작업ID 30건 -> output 34건): ${elapsedMs}ms`,
+  );
 
   // --- 대표 케이스 스팟 체크 ---
 
