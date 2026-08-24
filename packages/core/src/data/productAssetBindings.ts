@@ -114,6 +114,344 @@ export const PRODUCT_ASSET_BINDINGS: ProductAssetBinding[] = [
   // 보류(등록 안 함): "반찬_측/탑" 섹션의 "꼬막무침"(2008:3385/2008:3372, "부추" 접두어 없음,
   // 용량 표기 없음)은 SIMPLE_CHIVE_KKOMAK_240("부추꼬막무침240")과 동일 상품인지, 아니면
   // 별도 SKU(예: 다른 용량/부추 없는 버전)인지 확인되지 않아 alias로도 연결하지 않는다.
+
+  // --- 아래부터 신규 등록 29개 ---
+  // package variant만 등록한다(plated-side/top은 이 29개에 대해 개별적으로 확인되지 않았음).
+  // status='confirmed'는 이름+용량+같은 "본죽_시뮬" 최종 자산 갤러리(장조림_측/탑처럼 별도
+  // "_측/_탑" 섹션이 아니라 완성 패키지 사진이 모인 프레임) 패턴 일치로 판단한 것이며,
+  // 기존 3개(소고기장조림130 등)처럼 개별 screenshot으로 하나하나 재확인하지는 않았다.
+  {
+    productCode: 'SIMPLE_BEEF_QUAIL_JANGJORIM_150',
+    variants: [
+      {
+        assetKind: 'package',
+        source: { kind: 'component-variant', componentName: '본죽장조림', variantValue: 'Property 1=본죽_본메추리알쇠고기장조림_150g', confirmedNodeId: '2008:3803' },
+        assetKey: 'SIMPLE_BEEF_QUAIL_JANGJORIM_150',
+        status: 'confirmed',
+      },
+    ],
+  },
+  {
+    productCode: 'SIMPLE_BEEF_JANGJORIM_300',
+    variants: [
+      {
+        assetKind: 'package',
+        source: { kind: 'component-variant', componentName: '본죽장조림', variantValue: 'Property 1=본죽_본쇠고기장조림_300g', confirmedNodeId: '2008:3805' },
+        assetKey: 'SIMPLE_BEEF_JANGJORIM_300',
+        status: 'confirmed',
+      },
+    ],
+  },
+  {
+    productCode: 'SIMPLE_MINI_BEEF_JANGJORIM_70',
+    variants: [
+      {
+        assetKind: 'package',
+        source: { kind: 'component-variant', componentName: '미니 장조림_박스+파우치', variantValue: 'Property 1=미니_쇠고기장조림_70g', confirmedNodeId: '2008:3788' },
+        assetKey: 'SIMPLE_MINI_BEEF_JANGJORIM_70',
+        status: 'confirmed',
+      },
+    ],
+  },
+  {
+    productCode: 'SIMPLE_MINI_BUTTER_BEEF_JANGJORIM_70',
+    variants: [
+      {
+        assetKind: 'package',
+        source: { kind: 'component-variant', componentName: '미니 장조림_박스+파우치', variantValue: 'Property 1=미니_본버터쇠고기장조림_70g', confirmedNodeId: '2008:3796' },
+        assetKey: 'SIMPLE_MINI_BUTTER_BEEF_JANGJORIM_70',
+        status: 'confirmed',
+      },
+    ],
+  },
+  {
+    productCode: 'SIMPLE_QUAIL_JANGJORIM_1000',
+    variants: [
+      {
+        assetKind: 'package',
+        source: { kind: 'component-variant', componentName: '메추리알 장조림_대용량', variantValue: 'Property 1=본죽_메추리알장조림_1kg', confirmedNodeId: '2008:3761' },
+        assetKey: 'SIMPLE_QUAIL_JANGJORIM_1000',
+        status: 'confirmed',
+      },
+    ],
+  },
+  {
+    productCode: 'SIMPLE_QUAIL_JANGJORIM_600',
+    variants: [
+      {
+        assetKind: 'package',
+        source: { kind: 'component-variant', componentName: '메추리알 장조림_대용량', variantValue: 'Property 1=본죽_메추리알장조림_600g', confirmedNodeId: '2008:3767' },
+        assetKey: 'SIMPLE_QUAIL_JANGJORIM_600',
+        status: 'confirmed',
+      },
+    ],
+  },
+  {
+    productCode: 'SIMPLE_CHUEOTANG_700',
+    variants: [
+      {
+        assetKind: 'package',
+        source: { kind: 'component-variant', componentName: '느리게만든', variantValue: 'Property 1=느리게만든_본남도식추어탕_700g', confirmedNodeId: '2008:3748' },
+        assetKey: 'SIMPLE_CHUEOTANG_700',
+        status: 'confirmed',
+      },
+    ],
+  },
+  {
+    productCode: 'SIMPLE_GALBIJJIM_700',
+    variants: [
+      {
+        assetKind: 'package',
+        source: { kind: 'component-variant', componentName: '느리게만든', variantValue: 'Property 1=느리게만든_갈비찜_700g', confirmedNodeId: '2008:3750' },
+        assetKey: 'SIMPLE_GALBIJJIM_700',
+        status: 'confirmed',
+      },
+    ],
+  },
+  {
+    productCode: 'SIMPLE_DOGANITANG_700',
+    variants: [
+      {
+        assetKind: 'package',
+        source: { kind: 'component-variant', componentName: '느리게만든', variantValue: 'Property 1=느리게만든_본도가니탕_700g', confirmedNodeId: '2008:3752' },
+        assetKey: 'SIMPLE_DOGANITANG_700',
+        status: 'confirmed',
+      },
+    ],
+  },
+  {
+    productCode: 'SIMPLE_YUKGAEJANG_640',
+    variants: [
+      {
+        assetKind: 'package',
+        source: { kind: 'component-variant', componentName: '느리게만든', variantValue: 'Property 1=느리게만든_본대파육개장_640g', confirmedNodeId: '2008:3758' },
+        assetKey: 'SIMPLE_YUKGAEJANG_640',
+        status: 'confirmed',
+      },
+    ],
+  },
+  {
+    productCode: 'SIMPLE_HEALTHY_ABALONE_SAMGYE_JUK_330',
+    variants: [
+      {
+        assetKind: 'package',
+        source: { kind: 'component-variant', componentName: '헬시_죽_330g', variantValue: 'Property 1=헬시_전복삼계죽_330g', confirmedNodeId: '2008:3778' },
+        assetKey: 'SIMPLE_HEALTHY_ABALONE_SAMGYE_JUK_330',
+        status: 'confirmed',
+      },
+    ],
+  },
+  {
+    productCode: 'SIMPLE_HEALTHY_BEEF_ROOT_VEG_JUK_330',
+    variants: [
+      {
+        assetKind: 'package',
+        source: { kind: 'component-variant', componentName: '헬시_죽_330g', variantValue: 'Property 1=헬시_쇠고기뿌리야채죽_330g', confirmedNodeId: '2008:3776' },
+        assetKey: 'SIMPLE_HEALTHY_BEEF_ROOT_VEG_JUK_330',
+        status: 'confirmed',
+      },
+    ],
+  },
+  {
+    productCode: 'SIMPLE_HANWOO_SEOLLEONGTANG_450',
+    variants: [
+      {
+        assetKind: 'package',
+        source: { kind: 'component-variant', componentName: '본설렁탕', variantValue: 'Property 1=본설렁탕_한우설렁탕_450g', confirmedNodeId: '2008:3838' },
+        assetKey: 'SIMPLE_HANWOO_SEOLLEONGTANG_450',
+        status: 'confirmed',
+      },
+    ],
+  },
+  {
+    productCode: 'SIMPLE_YANGJI_SUYUK_100',
+    variants: [
+      {
+        assetKind: 'package',
+        source: { kind: 'component-variant', componentName: '본설렁탕', variantValue: 'Property 1=본설렁탕_양지수육_100g', confirmedNodeId: '2008:3836' },
+        assetKey: 'SIMPLE_YANGJI_SUYUK_100',
+        status: 'confirmed',
+      },
+    ],
+  },
+  {
+    productCode: 'SIMPLE_SIGNATURE_ABALONE_JUK_200',
+    variants: [
+      {
+        assetKind: 'package',
+        source: { kind: 'component-variant', componentName: '시그니처죽200/270', variantValue: 'Property 1=시그니처_전복죽_200g', confirmedNodeId: '2008:3547' },
+        assetKey: 'SIMPLE_SIGNATURE_ABALONE_JUK_200',
+        status: 'confirmed',
+      },
+    ],
+  },
+  {
+    productCode: 'SIMPLE_SIGNATURE_PUMPKIN_JUK_200',
+    variants: [
+      {
+        assetKind: 'package',
+        source: { kind: 'component-variant', componentName: '시그니처죽200/270', variantValue: 'Property 1=시그니처_단호박죽_200g', confirmedNodeId: '2008:3537' },
+        assetKey: 'SIMPLE_SIGNATURE_PUMPKIN_JUK_200',
+        status: 'confirmed',
+      },
+    ],
+  },
+  {
+    productCode: 'SIMPLE_SIGNATURE_BEEF_JUK_200',
+    variants: [
+      {
+        assetKind: 'package',
+        source: { kind: 'component-variant', componentName: '시그니처죽200/270', variantValue: 'Property 1=시그니처_쇠고기죽_200g', confirmedNodeId: '2008:3541' },
+        assetKey: 'SIMPLE_SIGNATURE_BEEF_JUK_200',
+        status: 'confirmed',
+      },
+    ],
+  },
+  {
+    productCode: 'SIMPLE_SIGNATURE_SPICY_OCTOPUS_KIMCHI_JUK_200',
+    variants: [
+      {
+        assetKind: 'package',
+        source: { kind: 'component-variant', componentName: '시그니처죽200/270', variantValue: 'Property 1=시그니처_얼큰낙지김치죽_200g', confirmedNodeId: '2008:3543' },
+        assetKey: 'SIMPLE_SIGNATURE_SPICY_OCTOPUS_KIMCHI_JUK_200',
+        status: 'confirmed',
+      },
+    ],
+  },
+  {
+    productCode: 'SIMPLE_SIGNATURE_SWEET_BLACK_BEAN_80',
+    variants: [
+      {
+        assetKind: 'package',
+        source: { kind: 'component-variant', componentName: '반찬', variantValue: 'Property 2=시그니처_달콤검은콩자반_80g', confirmedNodeId: '2008:3731' },
+        assetKey: 'SIMPLE_SIGNATURE_SWEET_BLACK_BEAN_80',
+        status: 'confirmed',
+      },
+    ],
+  },
+  {
+    productCode: 'SIMPLE_SIGNATURE_SPICY_PERILLA_LEAF_80',
+    variants: [
+      {
+        assetKind: 'package',
+        source: { kind: 'component-variant', componentName: '반찬', variantValue: 'Property 2=시그니처_매콤깻잎무침_80g', confirmedNodeId: '2008:3733' },
+        assetKey: 'SIMPLE_SIGNATURE_SPICY_PERILLA_LEAF_80',
+        status: 'confirmed',
+      },
+    ],
+  },
+  {
+    productCode: 'SIMPLE_SIGNATURE_CRISPY_LOTUS_ROOT_80',
+    variants: [
+      {
+        assetKind: 'package',
+        source: { kind: 'component-variant', componentName: '반찬', variantValue: 'Property 2=시그니처_아삭연근조림_80g', confirmedNodeId: '2008:3741' },
+        assetKey: 'SIMPLE_SIGNATURE_CRISPY_LOTUS_ROOT_80',
+        status: 'confirmed',
+      },
+    ],
+  },
+  {
+    productCode: 'SIMPLE_SIGNATURE_SHREDDED_SQUID_60',
+    variants: [
+      {
+        assetKind: 'package',
+        source: { kind: 'component-variant', componentName: '반찬', variantValue: 'Property 2=시그니처_촉촉진미채볶음_60g', confirmedNodeId: '2008:3743' },
+        assetKey: 'SIMPLE_SIGNATURE_SHREDDED_SQUID_60',
+        status: 'confirmed',
+      },
+    ],
+  },
+  {
+    productCode: 'BABY_KIDS_MIXED_VEGETABLE_JUK_170',
+    variants: [
+      {
+        assetKind: 'package',
+        source: { kind: 'component-variant', componentName: '본죽키즈죽', variantValue: 'Property 1=본죽키즈_모둠야채죽_170g', confirmedNodeId: '2008:2748' },
+        assetKey: 'BABY_KIDS_MIXED_VEGETABLE_JUK_170',
+        status: 'confirmed',
+      },
+    ],
+  },
+  {
+    productCode: 'BABY_KIDS_NUTRITION_CHICKEN_JUK_170',
+    variants: [
+      {
+        assetKind: 'package',
+        source: { kind: 'component-variant', componentName: '본죽키즈죽', variantValue: 'Property 1=본죽키즈_영양닭죽_170g', confirmedNodeId: '2008:2750' },
+        assetKey: 'BABY_KIDS_NUTRITION_CHICKEN_JUK_170',
+        status: 'confirmed',
+      },
+    ],
+  },
+  {
+    productCode: 'BABY_KIDS_ABALONE_JUK_170',
+    variants: [
+      {
+        assetKind: 'package',
+        source: { kind: 'component-variant', componentName: '본죽키즈죽', variantValue: 'Property 1=본죽키즈_튼튼전복죽_170g', confirmedNodeId: '2008:2752' },
+        assetKey: 'BABY_KIDS_ABALONE_JUK_170',
+        status: 'confirmed',
+      },
+    ],
+  },
+  {
+    productCode: 'BABY_KIDS_HANWOO_VEGETABLE_JUK_170',
+    variants: [
+      {
+        assetKind: 'package',
+        source: { kind: 'component-variant', componentName: '본죽키즈죽', variantValue: 'Property 1=본죽키즈_한우야채죽_170g', confirmedNodeId: '2008:2754' },
+        assetKey: 'BABY_KIDS_HANWOO_VEGETABLE_JUK_170',
+        status: 'confirmed',
+      },
+    ],
+  },
+  {
+    productCode: 'BABY_ORGANIC_RICE_PUFF_RED_30',
+    variants: [
+      {
+        assetKind: 'package',
+        source: { kind: 'component-variant', componentName: '유기농쌀과자퍼프', variantValue: 'Property 1=베이비본죽_유기농쌀과자퍼프_레드_30g', confirmedNodeId: '2008:2757' },
+        assetKey: 'BABY_ORGANIC_RICE_PUFF_RED_30',
+        status: 'confirmed',
+      },
+    ],
+  },
+  {
+    productCode: 'BABY_ORGANIC_RICE_PUFF_YELLOW_30',
+    variants: [
+      {
+        assetKind: 'package',
+        source: { kind: 'component-variant', componentName: '유기농쌀과자퍼프', variantValue: 'Property 1=베이비본죽_유기농쌀과자퍼프_옐로우_30g', confirmedNodeId: '2008:2759' },
+        assetKey: 'BABY_ORGANIC_RICE_PUFF_YELLOW_30',
+        status: 'confirmed',
+      },
+    ],
+  },
+  {
+    productCode: 'BABY_ORGANIC_RICE_PUFF_PURPLE_30',
+    variants: [
+      {
+        assetKind: 'package',
+        source: { kind: 'component-variant', componentName: '유기농쌀과자퍼프', variantValue: 'Property 1=베이비본죽_유기농쌀과자퍼프_퍼플_30g', confirmedNodeId: '2008:2761' },
+        assetKey: 'BABY_ORGANIC_RICE_PUFF_PURPLE_30',
+        status: 'confirmed',
+      },
+    ],
+  },
+
+  // --- 애매해서 보류(등록 안 함) — 필요시 다음 배치에서 확인 후 등록 ---
+  // - 쇠고기장조림170_코스트코(2008:3807)/그 박스형(2008:3809): 특정 유통사(코스트코) 전용
+  //   패키징으로 보여 별도 SKU인지 기존 상품의 포장 변형일 뿐인지 불명확.
+  // - 신선집중_메추리알장조림_1kg(2008:3765): 브랜드가 "본죽"이 아니라 "신선집중"이라 이
+  //   레지스트리(전부 본죽/베이비본죽) 범위에 포함되는 상품인지 확인 필요.
+  // - 미니_본버터감자장조림_75g(2008:3790) vs "상세정보" 프레임의 E03_미니버터감자장조림_70
+  //   (2008:3632): 같은 상품으로 보이는데 용량 표기가 75g/70g로 서로 달라 확정하지 않음.
+  // - 미니_본쇠고기장조림_박스_RE(2008:3800): SIMPLE_MINI_BEEF_JANGJORIM_70과 동일 상품의
+  //   박스 포장일 가능성이 높으나 용량 표기가 없어 확정하지 않음.
+  // - "상세정보" 프레임의 F01~F04/G01~G02(2008:3620~3630, 제주안심/헬시 장조림 120~130g
+  //   시리즈)는 데이터는 깨끗하지만 이번 배치 크기(20~30개) 안에서 우선순위상 제외 — 다음
+  //   배치 후보로 남겨둔다.
 ];
 
 export function resolveProductAssetVariant(

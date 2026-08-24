@@ -856,12 +856,348 @@
           note: "\uC774\uB984/\uC6A9\uB7C9 \uC815\uD655\uD788 \uC77C\uCE58"
         }
       ]
-    }
+    },
     // BABY_BEEF_PORRIDGE_100 / BABY_PUMPKIN_PORRIDGE_100은 실제 상품명과 불일치하는 것으로
     // 확인된 placeholder이므로 asset binding을 등록하지 않는다(=composePlan 대상에서 제외됨).
     // 보류(등록 안 함): "반찬_측/탑" 섹션의 "꼬막무침"(2008:3385/2008:3372, "부추" 접두어 없음,
     // 용량 표기 없음)은 SIMPLE_CHIVE_KKOMAK_240("부추꼬막무침240")과 동일 상품인지, 아니면
     // 별도 SKU(예: 다른 용량/부추 없는 버전)인지 확인되지 않아 alias로도 연결하지 않는다.
+    // --- 아래부터 신규 등록 29개 ---
+    // package variant만 등록한다(plated-side/top은 이 29개에 대해 개별적으로 확인되지 않았음).
+    // status='confirmed'는 이름+용량+같은 "본죽_시뮬" 최종 자산 갤러리(장조림_측/탑처럼 별도
+    // "_측/_탑" 섹션이 아니라 완성 패키지 사진이 모인 프레임) 패턴 일치로 판단한 것이며,
+    // 기존 3개(소고기장조림130 등)처럼 개별 screenshot으로 하나하나 재확인하지는 않았다.
+    {
+      productCode: "SIMPLE_BEEF_QUAIL_JANGJORIM_150",
+      variants: [
+        {
+          assetKind: "package",
+          source: { kind: "component-variant", componentName: "\uBCF8\uC8FD\uC7A5\uC870\uB9BC", variantValue: "Property 1=\uBCF8\uC8FD_\uBCF8\uBA54\uCD94\uB9AC\uC54C\uC1E0\uACE0\uAE30\uC7A5\uC870\uB9BC_150g", confirmedNodeId: "2008:3803" },
+          assetKey: "SIMPLE_BEEF_QUAIL_JANGJORIM_150",
+          status: "confirmed"
+        }
+      ]
+    },
+    {
+      productCode: "SIMPLE_BEEF_JANGJORIM_300",
+      variants: [
+        {
+          assetKind: "package",
+          source: { kind: "component-variant", componentName: "\uBCF8\uC8FD\uC7A5\uC870\uB9BC", variantValue: "Property 1=\uBCF8\uC8FD_\uBCF8\uC1E0\uACE0\uAE30\uC7A5\uC870\uB9BC_300g", confirmedNodeId: "2008:3805" },
+          assetKey: "SIMPLE_BEEF_JANGJORIM_300",
+          status: "confirmed"
+        }
+      ]
+    },
+    {
+      productCode: "SIMPLE_MINI_BEEF_JANGJORIM_70",
+      variants: [
+        {
+          assetKind: "package",
+          source: { kind: "component-variant", componentName: "\uBBF8\uB2C8 \uC7A5\uC870\uB9BC_\uBC15\uC2A4+\uD30C\uC6B0\uCE58", variantValue: "Property 1=\uBBF8\uB2C8_\uC1E0\uACE0\uAE30\uC7A5\uC870\uB9BC_70g", confirmedNodeId: "2008:3788" },
+          assetKey: "SIMPLE_MINI_BEEF_JANGJORIM_70",
+          status: "confirmed"
+        }
+      ]
+    },
+    {
+      productCode: "SIMPLE_MINI_BUTTER_BEEF_JANGJORIM_70",
+      variants: [
+        {
+          assetKind: "package",
+          source: { kind: "component-variant", componentName: "\uBBF8\uB2C8 \uC7A5\uC870\uB9BC_\uBC15\uC2A4+\uD30C\uC6B0\uCE58", variantValue: "Property 1=\uBBF8\uB2C8_\uBCF8\uBC84\uD130\uC1E0\uACE0\uAE30\uC7A5\uC870\uB9BC_70g", confirmedNodeId: "2008:3796" },
+          assetKey: "SIMPLE_MINI_BUTTER_BEEF_JANGJORIM_70",
+          status: "confirmed"
+        }
+      ]
+    },
+    {
+      productCode: "SIMPLE_QUAIL_JANGJORIM_1000",
+      variants: [
+        {
+          assetKind: "package",
+          source: { kind: "component-variant", componentName: "\uBA54\uCD94\uB9AC\uC54C \uC7A5\uC870\uB9BC_\uB300\uC6A9\uB7C9", variantValue: "Property 1=\uBCF8\uC8FD_\uBA54\uCD94\uB9AC\uC54C\uC7A5\uC870\uB9BC_1kg", confirmedNodeId: "2008:3761" },
+          assetKey: "SIMPLE_QUAIL_JANGJORIM_1000",
+          status: "confirmed"
+        }
+      ]
+    },
+    {
+      productCode: "SIMPLE_QUAIL_JANGJORIM_600",
+      variants: [
+        {
+          assetKind: "package",
+          source: { kind: "component-variant", componentName: "\uBA54\uCD94\uB9AC\uC54C \uC7A5\uC870\uB9BC_\uB300\uC6A9\uB7C9", variantValue: "Property 1=\uBCF8\uC8FD_\uBA54\uCD94\uB9AC\uC54C\uC7A5\uC870\uB9BC_600g", confirmedNodeId: "2008:3767" },
+          assetKey: "SIMPLE_QUAIL_JANGJORIM_600",
+          status: "confirmed"
+        }
+      ]
+    },
+    {
+      productCode: "SIMPLE_CHUEOTANG_700",
+      variants: [
+        {
+          assetKind: "package",
+          source: { kind: "component-variant", componentName: "\uB290\uB9AC\uAC8C\uB9CC\uB4E0", variantValue: "Property 1=\uB290\uB9AC\uAC8C\uB9CC\uB4E0_\uBCF8\uB0A8\uB3C4\uC2DD\uCD94\uC5B4\uD0D5_700g", confirmedNodeId: "2008:3748" },
+          assetKey: "SIMPLE_CHUEOTANG_700",
+          status: "confirmed"
+        }
+      ]
+    },
+    {
+      productCode: "SIMPLE_GALBIJJIM_700",
+      variants: [
+        {
+          assetKind: "package",
+          source: { kind: "component-variant", componentName: "\uB290\uB9AC\uAC8C\uB9CC\uB4E0", variantValue: "Property 1=\uB290\uB9AC\uAC8C\uB9CC\uB4E0_\uAC08\uBE44\uCC1C_700g", confirmedNodeId: "2008:3750" },
+          assetKey: "SIMPLE_GALBIJJIM_700",
+          status: "confirmed"
+        }
+      ]
+    },
+    {
+      productCode: "SIMPLE_DOGANITANG_700",
+      variants: [
+        {
+          assetKind: "package",
+          source: { kind: "component-variant", componentName: "\uB290\uB9AC\uAC8C\uB9CC\uB4E0", variantValue: "Property 1=\uB290\uB9AC\uAC8C\uB9CC\uB4E0_\uBCF8\uB3C4\uAC00\uB2C8\uD0D5_700g", confirmedNodeId: "2008:3752" },
+          assetKey: "SIMPLE_DOGANITANG_700",
+          status: "confirmed"
+        }
+      ]
+    },
+    {
+      productCode: "SIMPLE_YUKGAEJANG_640",
+      variants: [
+        {
+          assetKind: "package",
+          source: { kind: "component-variant", componentName: "\uB290\uB9AC\uAC8C\uB9CC\uB4E0", variantValue: "Property 1=\uB290\uB9AC\uAC8C\uB9CC\uB4E0_\uBCF8\uB300\uD30C\uC721\uAC1C\uC7A5_640g", confirmedNodeId: "2008:3758" },
+          assetKey: "SIMPLE_YUKGAEJANG_640",
+          status: "confirmed"
+        }
+      ]
+    },
+    {
+      productCode: "SIMPLE_HEALTHY_ABALONE_SAMGYE_JUK_330",
+      variants: [
+        {
+          assetKind: "package",
+          source: { kind: "component-variant", componentName: "\uD5EC\uC2DC_\uC8FD_330g", variantValue: "Property 1=\uD5EC\uC2DC_\uC804\uBCF5\uC0BC\uACC4\uC8FD_330g", confirmedNodeId: "2008:3778" },
+          assetKey: "SIMPLE_HEALTHY_ABALONE_SAMGYE_JUK_330",
+          status: "confirmed"
+        }
+      ]
+    },
+    {
+      productCode: "SIMPLE_HEALTHY_BEEF_ROOT_VEG_JUK_330",
+      variants: [
+        {
+          assetKind: "package",
+          source: { kind: "component-variant", componentName: "\uD5EC\uC2DC_\uC8FD_330g", variantValue: "Property 1=\uD5EC\uC2DC_\uC1E0\uACE0\uAE30\uBFCC\uB9AC\uC57C\uCC44\uC8FD_330g", confirmedNodeId: "2008:3776" },
+          assetKey: "SIMPLE_HEALTHY_BEEF_ROOT_VEG_JUK_330",
+          status: "confirmed"
+        }
+      ]
+    },
+    {
+      productCode: "SIMPLE_HANWOO_SEOLLEONGTANG_450",
+      variants: [
+        {
+          assetKind: "package",
+          source: { kind: "component-variant", componentName: "\uBCF8\uC124\uB801\uD0D5", variantValue: "Property 1=\uBCF8\uC124\uB801\uD0D5_\uD55C\uC6B0\uC124\uB801\uD0D5_450g", confirmedNodeId: "2008:3838" },
+          assetKey: "SIMPLE_HANWOO_SEOLLEONGTANG_450",
+          status: "confirmed"
+        }
+      ]
+    },
+    {
+      productCode: "SIMPLE_YANGJI_SUYUK_100",
+      variants: [
+        {
+          assetKind: "package",
+          source: { kind: "component-variant", componentName: "\uBCF8\uC124\uB801\uD0D5", variantValue: "Property 1=\uBCF8\uC124\uB801\uD0D5_\uC591\uC9C0\uC218\uC721_100g", confirmedNodeId: "2008:3836" },
+          assetKey: "SIMPLE_YANGJI_SUYUK_100",
+          status: "confirmed"
+        }
+      ]
+    },
+    {
+      productCode: "SIMPLE_SIGNATURE_ABALONE_JUK_200",
+      variants: [
+        {
+          assetKind: "package",
+          source: { kind: "component-variant", componentName: "\uC2DC\uADF8\uB2C8\uCC98\uC8FD200/270", variantValue: "Property 1=\uC2DC\uADF8\uB2C8\uCC98_\uC804\uBCF5\uC8FD_200g", confirmedNodeId: "2008:3547" },
+          assetKey: "SIMPLE_SIGNATURE_ABALONE_JUK_200",
+          status: "confirmed"
+        }
+      ]
+    },
+    {
+      productCode: "SIMPLE_SIGNATURE_PUMPKIN_JUK_200",
+      variants: [
+        {
+          assetKind: "package",
+          source: { kind: "component-variant", componentName: "\uC2DC\uADF8\uB2C8\uCC98\uC8FD200/270", variantValue: "Property 1=\uC2DC\uADF8\uB2C8\uCC98_\uB2E8\uD638\uBC15\uC8FD_200g", confirmedNodeId: "2008:3537" },
+          assetKey: "SIMPLE_SIGNATURE_PUMPKIN_JUK_200",
+          status: "confirmed"
+        }
+      ]
+    },
+    {
+      productCode: "SIMPLE_SIGNATURE_BEEF_JUK_200",
+      variants: [
+        {
+          assetKind: "package",
+          source: { kind: "component-variant", componentName: "\uC2DC\uADF8\uB2C8\uCC98\uC8FD200/270", variantValue: "Property 1=\uC2DC\uADF8\uB2C8\uCC98_\uC1E0\uACE0\uAE30\uC8FD_200g", confirmedNodeId: "2008:3541" },
+          assetKey: "SIMPLE_SIGNATURE_BEEF_JUK_200",
+          status: "confirmed"
+        }
+      ]
+    },
+    {
+      productCode: "SIMPLE_SIGNATURE_SPICY_OCTOPUS_KIMCHI_JUK_200",
+      variants: [
+        {
+          assetKind: "package",
+          source: { kind: "component-variant", componentName: "\uC2DC\uADF8\uB2C8\uCC98\uC8FD200/270", variantValue: "Property 1=\uC2DC\uADF8\uB2C8\uCC98_\uC5BC\uD070\uB099\uC9C0\uAE40\uCE58\uC8FD_200g", confirmedNodeId: "2008:3543" },
+          assetKey: "SIMPLE_SIGNATURE_SPICY_OCTOPUS_KIMCHI_JUK_200",
+          status: "confirmed"
+        }
+      ]
+    },
+    {
+      productCode: "SIMPLE_SIGNATURE_SWEET_BLACK_BEAN_80",
+      variants: [
+        {
+          assetKind: "package",
+          source: { kind: "component-variant", componentName: "\uBC18\uCC2C", variantValue: "Property 2=\uC2DC\uADF8\uB2C8\uCC98_\uB2EC\uCF64\uAC80\uC740\uCF69\uC790\uBC18_80g", confirmedNodeId: "2008:3731" },
+          assetKey: "SIMPLE_SIGNATURE_SWEET_BLACK_BEAN_80",
+          status: "confirmed"
+        }
+      ]
+    },
+    {
+      productCode: "SIMPLE_SIGNATURE_SPICY_PERILLA_LEAF_80",
+      variants: [
+        {
+          assetKind: "package",
+          source: { kind: "component-variant", componentName: "\uBC18\uCC2C", variantValue: "Property 2=\uC2DC\uADF8\uB2C8\uCC98_\uB9E4\uCF64\uAE7B\uC78E\uBB34\uCE68_80g", confirmedNodeId: "2008:3733" },
+          assetKey: "SIMPLE_SIGNATURE_SPICY_PERILLA_LEAF_80",
+          status: "confirmed"
+        }
+      ]
+    },
+    {
+      productCode: "SIMPLE_SIGNATURE_CRISPY_LOTUS_ROOT_80",
+      variants: [
+        {
+          assetKind: "package",
+          source: { kind: "component-variant", componentName: "\uBC18\uCC2C", variantValue: "Property 2=\uC2DC\uADF8\uB2C8\uCC98_\uC544\uC0AD\uC5F0\uADFC\uC870\uB9BC_80g", confirmedNodeId: "2008:3741" },
+          assetKey: "SIMPLE_SIGNATURE_CRISPY_LOTUS_ROOT_80",
+          status: "confirmed"
+        }
+      ]
+    },
+    {
+      productCode: "SIMPLE_SIGNATURE_SHREDDED_SQUID_60",
+      variants: [
+        {
+          assetKind: "package",
+          source: { kind: "component-variant", componentName: "\uBC18\uCC2C", variantValue: "Property 2=\uC2DC\uADF8\uB2C8\uCC98_\uCD09\uCD09\uC9C4\uBBF8\uCC44\uBCF6\uC74C_60g", confirmedNodeId: "2008:3743" },
+          assetKey: "SIMPLE_SIGNATURE_SHREDDED_SQUID_60",
+          status: "confirmed"
+        }
+      ]
+    },
+    {
+      productCode: "BABY_KIDS_MIXED_VEGETABLE_JUK_170",
+      variants: [
+        {
+          assetKind: "package",
+          source: { kind: "component-variant", componentName: "\uBCF8\uC8FD\uD0A4\uC988\uC8FD", variantValue: "Property 1=\uBCF8\uC8FD\uD0A4\uC988_\uBAA8\uB460\uC57C\uCC44\uC8FD_170g", confirmedNodeId: "2008:2748" },
+          assetKey: "BABY_KIDS_MIXED_VEGETABLE_JUK_170",
+          status: "confirmed"
+        }
+      ]
+    },
+    {
+      productCode: "BABY_KIDS_NUTRITION_CHICKEN_JUK_170",
+      variants: [
+        {
+          assetKind: "package",
+          source: { kind: "component-variant", componentName: "\uBCF8\uC8FD\uD0A4\uC988\uC8FD", variantValue: "Property 1=\uBCF8\uC8FD\uD0A4\uC988_\uC601\uC591\uB2ED\uC8FD_170g", confirmedNodeId: "2008:2750" },
+          assetKey: "BABY_KIDS_NUTRITION_CHICKEN_JUK_170",
+          status: "confirmed"
+        }
+      ]
+    },
+    {
+      productCode: "BABY_KIDS_ABALONE_JUK_170",
+      variants: [
+        {
+          assetKind: "package",
+          source: { kind: "component-variant", componentName: "\uBCF8\uC8FD\uD0A4\uC988\uC8FD", variantValue: "Property 1=\uBCF8\uC8FD\uD0A4\uC988_\uD2BC\uD2BC\uC804\uBCF5\uC8FD_170g", confirmedNodeId: "2008:2752" },
+          assetKey: "BABY_KIDS_ABALONE_JUK_170",
+          status: "confirmed"
+        }
+      ]
+    },
+    {
+      productCode: "BABY_KIDS_HANWOO_VEGETABLE_JUK_170",
+      variants: [
+        {
+          assetKind: "package",
+          source: { kind: "component-variant", componentName: "\uBCF8\uC8FD\uD0A4\uC988\uC8FD", variantValue: "Property 1=\uBCF8\uC8FD\uD0A4\uC988_\uD55C\uC6B0\uC57C\uCC44\uC8FD_170g", confirmedNodeId: "2008:2754" },
+          assetKey: "BABY_KIDS_HANWOO_VEGETABLE_JUK_170",
+          status: "confirmed"
+        }
+      ]
+    },
+    {
+      productCode: "BABY_ORGANIC_RICE_PUFF_RED_30",
+      variants: [
+        {
+          assetKind: "package",
+          source: { kind: "component-variant", componentName: "\uC720\uAE30\uB18D\uC300\uACFC\uC790\uD37C\uD504", variantValue: "Property 1=\uBCA0\uC774\uBE44\uBCF8\uC8FD_\uC720\uAE30\uB18D\uC300\uACFC\uC790\uD37C\uD504_\uB808\uB4DC_30g", confirmedNodeId: "2008:2757" },
+          assetKey: "BABY_ORGANIC_RICE_PUFF_RED_30",
+          status: "confirmed"
+        }
+      ]
+    },
+    {
+      productCode: "BABY_ORGANIC_RICE_PUFF_YELLOW_30",
+      variants: [
+        {
+          assetKind: "package",
+          source: { kind: "component-variant", componentName: "\uC720\uAE30\uB18D\uC300\uACFC\uC790\uD37C\uD504", variantValue: "Property 1=\uBCA0\uC774\uBE44\uBCF8\uC8FD_\uC720\uAE30\uB18D\uC300\uACFC\uC790\uD37C\uD504_\uC610\uB85C\uC6B0_30g", confirmedNodeId: "2008:2759" },
+          assetKey: "BABY_ORGANIC_RICE_PUFF_YELLOW_30",
+          status: "confirmed"
+        }
+      ]
+    },
+    {
+      productCode: "BABY_ORGANIC_RICE_PUFF_PURPLE_30",
+      variants: [
+        {
+          assetKind: "package",
+          source: { kind: "component-variant", componentName: "\uC720\uAE30\uB18D\uC300\uACFC\uC790\uD37C\uD504", variantValue: "Property 1=\uBCA0\uC774\uBE44\uBCF8\uC8FD_\uC720\uAE30\uB18D\uC300\uACFC\uC790\uD37C\uD504_\uD37C\uD50C_30g", confirmedNodeId: "2008:2761" },
+          assetKey: "BABY_ORGANIC_RICE_PUFF_PURPLE_30",
+          status: "confirmed"
+        }
+      ]
+    }
+    // --- 애매해서 보류(등록 안 함) — 필요시 다음 배치에서 확인 후 등록 ---
+    // - 쇠고기장조림170_코스트코(2008:3807)/그 박스형(2008:3809): 특정 유통사(코스트코) 전용
+    //   패키징으로 보여 별도 SKU인지 기존 상품의 포장 변형일 뿐인지 불명확.
+    // - 신선집중_메추리알장조림_1kg(2008:3765): 브랜드가 "본죽"이 아니라 "신선집중"이라 이
+    //   레지스트리(전부 본죽/베이비본죽) 범위에 포함되는 상품인지 확인 필요.
+    // - 미니_본버터감자장조림_75g(2008:3790) vs "상세정보" 프레임의 E03_미니버터감자장조림_70
+    //   (2008:3632): 같은 상품으로 보이는데 용량 표기가 75g/70g로 서로 달라 확정하지 않음.
+    // - 미니_본쇠고기장조림_박스_RE(2008:3800): SIMPLE_MINI_BEEF_JANGJORIM_70과 동일 상품의
+    //   박스 포장일 가능성이 높으나 용량 표기가 없어 확정하지 않음.
+    // - "상세정보" 프레임의 F01~F04/G01~G02(2008:3620~3630, 제주안심/헬시 장조림 120~130g
+    //   시리즈)는 데이터는 깨끗하지만 이번 배치 크기(20~30개) 안에서 우선순위상 제외 — 다음
+    //   배치 후보로 남겨둔다.
   ];
   function resolveProductAssetVariant(productCode, assetKind = DEFAULT_PRODUCT_ASSET_KIND) {
     var _a;
@@ -880,7 +1216,38 @@
     { code: "SIMPLE_QUAIL_JANGJORIM_180", productGroup: "simple-meal", brand: "\uBCF8\uC8FD", name: "\uBA54\uCD94\uB9AC\uC54C \uC7A5\uC870\uB9BC", capacity: "180g" },
     { code: "SIMPLE_CHIVE_KKOMAK_240", productGroup: "simple-meal", brand: "\uBCF8\uC8FD", name: "\uBD80\uCD94 \uAF2C\uB9C9\uBB34\uCE68", capacity: "240g" },
     { code: "BABY_BEEF_PORRIDGE_100", productGroup: "baby-food", brand: "\uBCF8\uC8FD", name: "\uC774\uC720\uC2DD \uC18C\uACE0\uAE30\uC8FD", capacity: "100g" },
-    { code: "BABY_PUMPKIN_PORRIDGE_100", productGroup: "baby-food", brand: "\uBCF8\uC8FD", name: "\uC774\uC720\uC2DD \uB2E8\uD638\uBC15\uC8FD", capacity: "100g" }
+    { code: "BABY_PUMPKIN_PORRIDGE_100", productGroup: "baby-food", brand: "\uBCF8\uC8FD", name: "\uC774\uC720\uC2DD \uB2E8\uD638\uBC15\uC8FD", capacity: "100g" },
+    // --- 간편식(simple-meal) 신규 22개 ---
+    { code: "SIMPLE_BEEF_QUAIL_JANGJORIM_150", productGroup: "simple-meal", brand: "\uBCF8\uC8FD", name: "\uBCF8 \uBA54\uCD94\uB9AC\uC54C\uC1E0\uACE0\uAE30\uC7A5\uC870\uB9BC", capacity: "150g" },
+    { code: "SIMPLE_BEEF_JANGJORIM_300", productGroup: "simple-meal", brand: "\uBCF8\uC8FD", name: "\uBCF8 \uC1E0\uACE0\uAE30\uC7A5\uC870\uB9BC", capacity: "300g" },
+    { code: "SIMPLE_MINI_BEEF_JANGJORIM_70", productGroup: "simple-meal", brand: "\uBCF8\uC8FD", name: "\uBBF8\uB2C8 \uC1E0\uACE0\uAE30\uC7A5\uC870\uB9BC", capacity: "70g" },
+    { code: "SIMPLE_MINI_BUTTER_BEEF_JANGJORIM_70", productGroup: "simple-meal", brand: "\uBCF8\uC8FD", name: "\uBBF8\uB2C8 \uBCF8\uBC84\uD130\uC1E0\uACE0\uAE30\uC7A5\uC870\uB9BC", capacity: "70g" },
+    { code: "SIMPLE_QUAIL_JANGJORIM_1000", productGroup: "simple-meal", brand: "\uBCF8\uC8FD", name: "\uBA54\uCD94\uB9AC\uC54C\uC7A5\uC870\uB9BC \uB300\uC6A9\uB7C9 1kg", capacity: "1kg" },
+    { code: "SIMPLE_QUAIL_JANGJORIM_600", productGroup: "simple-meal", brand: "\uBCF8\uC8FD", name: "\uBA54\uCD94\uB9AC\uC54C\uC7A5\uC870\uB9BC \uB300\uC6A9\uB7C9 600g", capacity: "600g" },
+    { code: "SIMPLE_CHUEOTANG_700", productGroup: "simple-meal", brand: "\uBCF8\uC8FD", name: "\uB290\uB9AC\uAC8C\uB9CC\uB4E0 \uBCF8\uB0A8\uB3C4\uC2DD\uCD94\uC5B4\uD0D5", capacity: "700g" },
+    { code: "SIMPLE_GALBIJJIM_700", productGroup: "simple-meal", brand: "\uBCF8\uC8FD", name: "\uB290\uB9AC\uAC8C\uB9CC\uB4E0 \uAC08\uBE44\uCC1C", capacity: "700g" },
+    { code: "SIMPLE_DOGANITANG_700", productGroup: "simple-meal", brand: "\uBCF8\uC8FD", name: "\uB290\uB9AC\uAC8C\uB9CC\uB4E0 \uBCF8\uB3C4\uAC00\uB2C8\uD0D5", capacity: "700g" },
+    { code: "SIMPLE_YUKGAEJANG_640", productGroup: "simple-meal", brand: "\uBCF8\uC8FD", name: "\uB290\uB9AC\uAC8C\uB9CC\uB4E0 \uBCF8\uB300\uD30C\uC721\uAC1C\uC7A5", capacity: "640g" },
+    { code: "SIMPLE_HEALTHY_ABALONE_SAMGYE_JUK_330", productGroup: "simple-meal", brand: "\uBCF8\uC8FD", name: "\uD5EC\uC2DC \uC804\uBCF5\uC0BC\uACC4\uC8FD", capacity: "330g" },
+    { code: "SIMPLE_HEALTHY_BEEF_ROOT_VEG_JUK_330", productGroup: "simple-meal", brand: "\uBCF8\uC8FD", name: "\uD5EC\uC2DC \uC1E0\uACE0\uAE30\uBFCC\uB9AC\uC57C\uCC44\uC8FD", capacity: "330g" },
+    { code: "SIMPLE_HANWOO_SEOLLEONGTANG_450", productGroup: "simple-meal", brand: "\uBCF8\uC8FD", name: "\uBCF8\uC124\uB801\uD0D5 \uD55C\uC6B0\uC124\uB801\uD0D5", capacity: "450g" },
+    { code: "SIMPLE_YANGJI_SUYUK_100", productGroup: "simple-meal", brand: "\uBCF8\uC8FD", name: "\uBCF8\uC124\uB801\uD0D5 \uC591\uC9C0\uC218\uC721", capacity: "100g" },
+    { code: "SIMPLE_SIGNATURE_ABALONE_JUK_200", productGroup: "simple-meal", brand: "\uBCF8\uC8FD", name: "\uC2DC\uADF8\uB2C8\uCC98 \uC804\uBCF5\uC8FD", capacity: "200g" },
+    { code: "SIMPLE_SIGNATURE_PUMPKIN_JUK_200", productGroup: "simple-meal", brand: "\uBCF8\uC8FD", name: "\uC2DC\uADF8\uB2C8\uCC98 \uB2E8\uD638\uBC15\uC8FD", capacity: "200g" },
+    { code: "SIMPLE_SIGNATURE_BEEF_JUK_200", productGroup: "simple-meal", brand: "\uBCF8\uC8FD", name: "\uC2DC\uADF8\uB2C8\uCC98 \uC1E0\uACE0\uAE30\uC8FD", capacity: "200g" },
+    { code: "SIMPLE_SIGNATURE_SPICY_OCTOPUS_KIMCHI_JUK_200", productGroup: "simple-meal", brand: "\uBCF8\uC8FD", name: "\uC2DC\uADF8\uB2C8\uCC98 \uC5BC\uD070\uB099\uC9C0\uAE40\uCE58\uC8FD", capacity: "200g" },
+    { code: "SIMPLE_SIGNATURE_SWEET_BLACK_BEAN_80", productGroup: "simple-meal", brand: "\uBCF8\uC8FD", name: "\uC2DC\uADF8\uB2C8\uCC98 \uB2EC\uCF64\uAC80\uC740\uCF69\uC790\uBC18", capacity: "80g" },
+    { code: "SIMPLE_SIGNATURE_SPICY_PERILLA_LEAF_80", productGroup: "simple-meal", brand: "\uBCF8\uC8FD", name: "\uC2DC\uADF8\uB2C8\uCC98 \uB9E4\uCF64\uAE7B\uC78E\uBB34\uCE68", capacity: "80g" },
+    { code: "SIMPLE_SIGNATURE_CRISPY_LOTUS_ROOT_80", productGroup: "simple-meal", brand: "\uBCF8\uC8FD", name: "\uC2DC\uADF8\uB2C8\uCC98 \uC544\uC0AD\uC5F0\uADFC\uC870\uB9BC", capacity: "80g" },
+    { code: "SIMPLE_SIGNATURE_SHREDDED_SQUID_60", productGroup: "simple-meal", brand: "\uBCF8\uC8FD", name: "\uC2DC\uADF8\uB2C8\uCC98 \uCD09\uCD09\uC9C4\uBBF8\uCC44\uBCF6\uC74C", capacity: "60g" },
+    // --- 영유아(baby-food) 신규 7개 ---
+    { code: "BABY_KIDS_MIXED_VEGETABLE_JUK_170", productGroup: "baby-food", brand: "\uBCF8\uC8FD", name: "\uBCF8\uC8FD\uD0A4\uC988 \uBAA8\uB460\uC57C\uCC44\uC8FD", capacity: "170g" },
+    { code: "BABY_KIDS_NUTRITION_CHICKEN_JUK_170", productGroup: "baby-food", brand: "\uBCF8\uC8FD", name: "\uBCF8\uC8FD\uD0A4\uC988 \uC601\uC591\uB2ED\uC8FD", capacity: "170g" },
+    { code: "BABY_KIDS_ABALONE_JUK_170", productGroup: "baby-food", brand: "\uBCF8\uC8FD", name: "\uBCF8\uC8FD\uD0A4\uC988 \uD2BC\uD2BC\uC804\uBCF5\uC8FD", capacity: "170g" },
+    { code: "BABY_KIDS_HANWOO_VEGETABLE_JUK_170", productGroup: "baby-food", brand: "\uBCF8\uC8FD", name: "\uBCF8\uC8FD\uD0A4\uC988 \uD55C\uC6B0\uC57C\uCC44\uC8FD", capacity: "170g" },
+    { code: "BABY_ORGANIC_RICE_PUFF_RED_30", productGroup: "baby-food", brand: "\uBCA0\uC774\uBE44\uBCF8\uC8FD", name: "\uC720\uAE30\uB18D\uC300\uACFC\uC790\uD37C\uD504 \uB808\uB4DC", capacity: "30g" },
+    { code: "BABY_ORGANIC_RICE_PUFF_YELLOW_30", productGroup: "baby-food", brand: "\uBCA0\uC774\uBE44\uBCF8\uC8FD", name: "\uC720\uAE30\uB18D\uC300\uACFC\uC790\uD37C\uD504 \uC610\uB85C\uC6B0", capacity: "30g" },
+    { code: "BABY_ORGANIC_RICE_PUFF_PURPLE_30", productGroup: "baby-food", brand: "\uBCA0\uC774\uBE44\uBCF8\uC8FD", name: "\uC720\uAE30\uB18D\uC300\uACFC\uC790\uD37C\uD504 \uD37C\uD50C", capacity: "30g" }
   ];
   function toDomainProduct(entry) {
     const assetKey = resolveProductAssetKey(entry.code);

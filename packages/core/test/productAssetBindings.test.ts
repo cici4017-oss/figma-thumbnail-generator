@@ -4,6 +4,7 @@ import {
   resolveProductAssetVariant,
   DEFAULT_PRODUCT_ASSET_KIND,
   DOMAIN_PRODUCTS,
+  PRODUCTS,
 } from '../src/index';
 
 /**
@@ -49,8 +50,36 @@ import {
   const beef = DOMAIN_PRODUCTS.find((p) => p.id === 'SIMPLE_BEEF_JANGJORIM_130');
   assert.ok(beef);
   assert.equal(beef!.assetKey, 'SIMPLE_BEEF_JANGJORIM_130');
-  assert.equal(DOMAIN_PRODUCTS.length, 3, '아직 확인된 asset binding이 있는 상품 3개만 포함');
+  assert.equal(DOMAIN_PRODUCTS.length, 32, '확인된 asset binding이 있는 상품(기존 3 + 신규 29)만 포함');
   console.log('  ✓ DOMAIN_PRODUCTS/composePlan 파이프라인은 package 기준 assetKey로 변경 없이 동작');
+}
+
+// 6) Product Registry 확장: 신규 등록 29개는 _TBD 코드 없이, capacity가 null이 아닌
+//    실제 값으로 등록되어야 한다(용량이 이름에 명시된 것만 이번 배치에 포함했다).
+{
+  assert.equal(PRODUCTS.length, 34, '기존 5(placeholder 2 포함) + 신규 29');
+  const newCodes = [
+    'SIMPLE_BEEF_QUAIL_JANGJORIM_150', 'SIMPLE_BEEF_JANGJORIM_300', 'SIMPLE_MINI_BEEF_JANGJORIM_70',
+    'SIMPLE_MINI_BUTTER_BEEF_JANGJORIM_70', 'SIMPLE_QUAIL_JANGJORIM_1000', 'SIMPLE_QUAIL_JANGJORIM_600',
+    'SIMPLE_CHUEOTANG_700', 'SIMPLE_GALBIJJIM_700', 'SIMPLE_DOGANITANG_700', 'SIMPLE_YUKGAEJANG_640',
+    'SIMPLE_HEALTHY_ABALONE_SAMGYE_JUK_330', 'SIMPLE_HEALTHY_BEEF_ROOT_VEG_JUK_330',
+    'SIMPLE_HANWOO_SEOLLEONGTANG_450', 'SIMPLE_YANGJI_SUYUK_100', 'SIMPLE_SIGNATURE_ABALONE_JUK_200',
+    'SIMPLE_SIGNATURE_PUMPKIN_JUK_200', 'SIMPLE_SIGNATURE_BEEF_JUK_200',
+    'SIMPLE_SIGNATURE_SPICY_OCTOPUS_KIMCHI_JUK_200', 'SIMPLE_SIGNATURE_SWEET_BLACK_BEAN_80',
+    'SIMPLE_SIGNATURE_SPICY_PERILLA_LEAF_80', 'SIMPLE_SIGNATURE_CRISPY_LOTUS_ROOT_80',
+    'SIMPLE_SIGNATURE_SHREDDED_SQUID_60', 'BABY_KIDS_MIXED_VEGETABLE_JUK_170',
+    'BABY_KIDS_NUTRITION_CHICKEN_JUK_170', 'BABY_KIDS_ABALONE_JUK_170', 'BABY_KIDS_HANWOO_VEGETABLE_JUK_170',
+    'BABY_ORGANIC_RICE_PUFF_RED_30', 'BABY_ORGANIC_RICE_PUFF_YELLOW_30', 'BABY_ORGANIC_RICE_PUFF_PURPLE_30',
+  ];
+  assert.equal(newCodes.length, 29);
+  for (const code of newCodes) {
+    const entry = PRODUCTS.find((p) => p.code === code);
+    assert.ok(entry, `${code}가 PRODUCTS에 등록되어 있어야 함`);
+    assert.ok(!code.includes('_TBD'), `${code}는 _TBD 코드를 쓰지 않아야 함`);
+    assert.ok(entry!.capacity !== null, `${code}는 이름에 용량이 명시되어 capacity가 null이 아니어야 함`);
+    assert.equal(resolveProductAssetKey(code), code, `${code}는 package asset이 confirmed로 등록되어 DOMAIN_PRODUCTS에 포함되어야 함`);
+  }
+  console.log('  ✓ 신규 29개 모두 _TBD 없이, capacity 확인된 값으로, package asset과 함께 등록됨');
 }
 
 console.log('productAssetBindings.test.ts: 모든 검증 통과');
