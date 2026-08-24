@@ -3,7 +3,11 @@ import { composeChannelOutputs } from '@thumbnail-generator/core';
 import type { BatchGenerationRequest, WorkOrder } from '@thumbnail-generator/core/import';
 import { renderPlan } from './renderer';
 import { FIGMA_TEMPLATE_BINDINGS, type FigmaTemplateBinding } from './templateMapper';
-import { renderGeneratedPlan, GENERATED_RENDERER_SUPPORT, type GeneratedRendererSupport } from './generatedRenderer';
+import {
+  renderVerifiedDerivedGeneratedPlan,
+  VERIFIED_DERIVED_GENERATED_SUPPORT,
+  type VerifiedDerivedSupport,
+} from './verifiedDerivedGeneratedRenderer';
 import { checkRenderabilityForPlan, checkAssetResolvability } from './renderPreflight';
 import { resolveProductAsset } from './assetResolver';
 
@@ -96,13 +100,13 @@ export async function renderBatch(
   /** 테스트에서 mock 바인딩/지원 목록/asset resolver를 주입하기 위함(assetMapping.test.ts 등과 동일한 패턴). 생략하면 실제 프로덕션 데이터를 쓴다. */
   rendererDeps: {
     bindings?: FigmaTemplateBinding[];
-    generatedSupport?: GeneratedRendererSupport[];
+    verifiedDerivedSupport?: VerifiedDerivedSupport[];
     resolveAsset?: typeof resolveProductAsset;
   } = {},
 ): Promise<BatchRenderResult> {
   const includeReviewRequired = options.includeReviewRequired ?? false;
   const bindings = rendererDeps.bindings ?? FIGMA_TEMPLATE_BINDINGS;
-  const generatedSupport = rendererDeps.generatedSupport ?? GENERATED_RENDERER_SUPPORT;
+  const verifiedDerivedSupport = rendererDeps.verifiedDerivedSupport ?? VERIFIED_DERIVED_GENERATED_SUPPORT;
   const resolveAsset = rendererDeps.resolveAsset ?? resolveProductAsset;
 
   const verifiedPage = await findOrCreatePage(AUTO_GENERATED_VERIFIED_PAGE_NAME);
@@ -161,7 +165,7 @@ export async function renderBatch(
         continue;
       }
 
-      const renderability = checkRenderabilityForPlan(plan, bindings, generatedSupport);
+      const renderability = checkRenderabilityForPlan(plan, bindings, verifiedDerivedSupport);
       if (!renderability.renderable) {
         outputs.push({
           workOrderId: wo.workId,
@@ -204,7 +208,7 @@ export async function renderBatch(
       const renderResult =
         source === 'verified'
           ? await renderPlan(plan, bindings, { select: false })
-          : await renderGeneratedPlan(plan, generatedSupport, { select: false });
+          : await renderVerifiedDerivedGeneratedPlan(plan, verifiedDerivedSupport, bindings, { select: false });
       if (!renderResult.ok) {
         outputs.push({
           workOrderId: wo.workId,

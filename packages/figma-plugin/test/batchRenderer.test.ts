@@ -2,8 +2,7 @@ import assert from 'node:assert/strict';
 import type { ChannelPreset, LayoutDefinition, Product } from '@thumbnail-generator/core';
 import type { BatchGenerationRequest, WorkOrder } from '@thumbnail-generator/core/import';
 import { installMockFigma, uninstallMockFigma } from '../src/mock/mockFigma';
-import { seedMockTemplate, MOCK_TEMPLATE_BINDING, MOCK_PRODUCTS } from '../src/mock/mockTemplate';
-import { seedMockGeneratedShell, MOCK_GENERATED_SUPPORT } from '../src/mock/mockGeneratedShell';
+import { seedMockTemplate, MOCK_TEMPLATE_BINDING, MOCK_PRODUCTS, MOCK_VERIFIED_DERIVED_SUPPORT } from '../src/mock/mockTemplate';
 import {
   renderBatch,
   AUTO_GENERATED_VERIFIED_PAGE_NAME,
@@ -12,9 +11,13 @@ import {
 
 /**
  * Excel -> composeChannelOutputs -> 실제 Figma 생성까지의 전체 batch render 흐름을 회사 Figma
- * 파일 없이 검증한다. 실제 렌더링(renderPlan/renderGeneratedPlan)은 이미 각자 테스트가 있으므로,
- * 여기서는 "어떤 output을 생성/스킵하는지 판정"과 "생성된 frame이 올바른 페이지/이름으로
- * 정리되는지"에 집중한다.
+ * 파일 없이 검증한다. 실제 렌더링(renderPlan/verifiedDerivedGeneratedRenderer)은 이미 각자
+ * 테스트가 있으므로, 여기서는 "어떤 output을 생성/스킵하는지 판정"과 "생성된 frame이 올바른
+ * 페이지/이름으로 정리되는지"에 집중한다.
+ *
+ * Generated V2(verified-template-derived)로 전환한 뒤로는 generated 결과도 verified와 같은
+ * source 프레임(MOCK_TEMPLATE_BINDING)에서 파생된다 — 더 이상 별도의 "generated shell"을
+ * 따로 seed하지 않는다.
  */
 
 const MOCK_CHANNEL_PRESET: ChannelPreset = {
@@ -104,7 +107,6 @@ async function testDefaultSkipsReviewRequiredAndError() {
   const handle = installMockFigma();
   try {
     seedMockTemplate(handle);
-    seedMockGeneratedShell(handle);
     const products = mockProducts();
     const beef = products[0].id;
 
@@ -118,7 +120,7 @@ async function testDefaultSkipsReviewRequiredAndError() {
       batch,
       { products, channelPresets: [MOCK_CHANNEL_PRESET], layouts: [MOCK_LAYOUT_VERIFIED_3] },
       {}, // includeReviewRequired 생략 -> 기본값 false
-      { bindings: [MOCK_TEMPLATE_BINDING], generatedSupport: [MOCK_GENERATED_SUPPORT] },
+      { bindings: [MOCK_TEMPLATE_BINDING], verifiedDerivedSupport: [MOCK_VERIFIED_DERIVED_SUPPORT] },
     );
 
     assert.equal(result.summary.totalWorkOrders, 3);
@@ -153,7 +155,6 @@ async function testIncludeReviewRequiredRendersSupportedGenerated() {
   const handle = installMockFigma();
   try {
     seedMockTemplate(handle);
-    seedMockGeneratedShell(handle);
     const products = mockProducts();
     const beef = products[0].id;
 
@@ -163,10 +164,10 @@ async function testIncludeReviewRequiredRendersSupportedGenerated() {
       batch,
       { products, channelPresets: [MOCK_CHANNEL_PRESET], layouts: [MOCK_LAYOUT_VERIFIED_3] },
       { includeReviewRequired: true },
-      { bindings: [MOCK_TEMPLATE_BINDING], generatedSupport: [MOCK_GENERATED_SUPPORT] },
+      { bindings: [MOCK_TEMPLATE_BINDING], verifiedDerivedSupport: [MOCK_VERIFIED_DERIVED_SUPPORT] },
     );
 
-    assert.equal(result.summary.generatedCount, 1, 'includeReviewRequired=true면 지원되는 generated plan은 생성되어야 함');
+    assert.equal(result.summary.generatedCount, 1, 'includeReviewRequired=true면 지원되는 generated(verified-derived) plan은 생성되어야 함');
     const output = result.outputs[0];
     assert.equal(output.source, 'generated');
     assert.equal(output.frameName, `WO-010__naver-1000x1000__GENERATED_ROW-LINEAR_2__GENERATED`);
@@ -174,17 +175,19 @@ async function testIncludeReviewRequiredRendersSupportedGenerated() {
     const reviewPage = handle.root.children.find((p) => p.name === AUTO_GENERATED_REVIEW_PAGE_NAME)!;
     assert.ok(reviewPage.children.find((n) => n.name === output.frameName), 'generated 결과는 AUTO_GENERATED_REVIEW로 정리되어야 함');
 
-    console.log('  ✓ includeReviewRequired=true: 지원되는 naver generated plan이 실제로 생성되고 AUTO_GENERATED_REVIEW로 정리됨');
+    console.log('  ✓ includeReviewRequired=true: 지원되는 naver generated(verified-derived) plan이 실제로 생성되고 AUTO_GENERATED_REVIEW로 정리됨');
   } finally {
     uninstallMockFigma();
   }
 }
 
-async function testNotRenderableSkipsEvenWithOptionOn() {
+async function testGeneratedBaseTemplateNotAvailableSkipsBeforeRenderAttempt() {
+  // Generated V2 preflight 회귀 테스트: 이 채널+슬롯 수 조합에 파생 가능한 verified base
+  // 템플릿이 support 목록에 없으면(GENERATED_BASE_TEMPLATE_NOT_AVAILABLE), clone을 시도하다
+  // 실패로 되돌리는 대신 render 시도 전에 skippedNotRenderable로 걸러져야 한다.
   const handle = installMockFigma();
   try {
     seedMockTemplate(handle);
-    // seedMockGeneratedShell을 호출하지 않음 -> generated renderer의 base shell이 없다.
     const products = mockProducts();
     const beef = products[0].id;
 
@@ -194,15 +197,15 @@ async function testNotRenderableSkipsEvenWithOptionOn() {
       batch,
       { products, channelPresets: [MOCK_CHANNEL_PRESET], layouts: [MOCK_LAYOUT_VERIFIED_3] },
       { includeReviewRequired: true },
+      { bindings: [MOCK_TEMPLATE_BINDING], verifiedDerivedSupport: [] }, // 파생 지원 목록이 비어있음
     );
 
-    // MOCK_GENERATED_SUPPORT 자체는 넘기지 않았으므로(기본 GENERATED_RENDERER_SUPPORT를
-    // 사용) naver-1000x1000이 지원 목록에 있더라도 실제 shell frame이 이 mock 문서에는
-    // 없다 — renderGeneratedPlan이 "base shell을 찾을 수 없음"으로 실패해야 한다.
     assert.equal(result.summary.generatedCount, 0);
-    assert.equal(result.outputs[0].outcome, 'failed');
+    assert.equal(result.summary.failedCount, 0, 'clone을 시도했다가 실패하는 대신 render 전에 걸러져야 함');
+    assert.equal(result.outputs[0].outcome, 'skippedNotRenderable');
+    assert.match(result.outputs[0].message ?? '', /verified-derived 기본 템플릿이 아직 없/);
 
-    console.log('  ✓ base shell이 없으면 옵션이 켜져 있어도 실제 렌더 단계에서 명확히 실패로 처리됨');
+    console.log('  ✓ 파생 가능한 verified base 템플릿이 없으면 render를 시도하기 전에 GENERATED_BASE_TEMPLATE_NOT_AVAILABLE로 스킵됨');
   } finally {
     uninstallMockFigma();
   }
@@ -219,7 +222,6 @@ async function testBatchRenderNeverTouchesSelection() {
   const handle = installMockFigma();
   try {
     seedMockTemplate(handle);
-    seedMockGeneratedShell(handle);
     const products = mockProducts();
     const beef = products[0].id;
 
@@ -232,7 +234,7 @@ async function testBatchRenderNeverTouchesSelection() {
       batch,
       { products, channelPresets: [MOCK_CHANNEL_PRESET], layouts: [MOCK_LAYOUT_VERIFIED_3] },
       { includeReviewRequired: true },
-      { bindings: [MOCK_TEMPLATE_BINDING], generatedSupport: [MOCK_GENERATED_SUPPORT] },
+      { bindings: [MOCK_TEMPLATE_BINDING], verifiedDerivedSupport: [MOCK_VERIFIED_DERIVED_SUPPORT] },
     );
 
     assert.equal(result.summary.generatedCount, 2, 'verified 1건 + generated 1건 모두 생성되어야 함');
@@ -262,7 +264,6 @@ async function testAssetNotResolvableSkipsBeforeRenderAttempt() {
   const handle = installMockFigma();
   try {
     seedMockTemplate(handle);
-    seedMockGeneratedShell(handle);
     const products: Product[] = [
       { id: 'UNRESOLVABLE_PRODUCT', name: 'UNRESOLVABLE_PRODUCT', productGroup: 'simple-meal', assetKey: 'UNRESOLVABLE_PRODUCT' },
     ];
@@ -273,7 +274,7 @@ async function testAssetNotResolvableSkipsBeforeRenderAttempt() {
       batch,
       { products, channelPresets: [MOCK_CHANNEL_PRESET], layouts: [MOCK_LAYOUT_VERIFIED_3] },
       {},
-      { bindings: [MOCK_TEMPLATE_BINDING], generatedSupport: [MOCK_GENERATED_SUPPORT] },
+      { bindings: [MOCK_TEMPLATE_BINDING] },
     );
 
     assert.equal(result.summary.generatedCount, 0);
@@ -294,7 +295,7 @@ async function testAssetNotResolvableSkipsBeforeRenderAttempt() {
 async function main() {
   await testDefaultSkipsReviewRequiredAndError();
   await testIncludeReviewRequiredRendersSupportedGenerated();
-  await testNotRenderableSkipsEvenWithOptionOn();
+  await testGeneratedBaseTemplateNotAvailableSkipsBeforeRenderAttempt();
   await testBatchRenderNeverTouchesSelection();
   await testAssetNotResolvableSkipsBeforeRenderAttempt();
   console.log('batchRenderer.test.ts: 모든 검증 통과');

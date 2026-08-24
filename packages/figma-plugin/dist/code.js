@@ -1897,151 +1897,80 @@
     return { ok: true, nodeId: clone.id };
   }
 
-  // src/generatedLayoutGeometry.ts
-  var SUPPORTED_GENERATED_FAMILIES = [
-    "row-linear",
-    "diagonal-cascade",
-    "pyramid-stack"
-  ];
-  var MARGIN = 60;
-  var GAP = 20;
-  function rowLinear(slotKeys, frameWidth, frameHeight) {
-    const n = slotKeys.length;
-    const available = frameWidth - MARGIN * 2;
-    const size = (available - (n - 1) * GAP) / n;
-    const y = (frameHeight - size) / 2;
-    return slotKeys.map((slotKey, i) => ({ slotKey, x: MARGIN + i * (size + GAP), y, size }));
-  }
-  function diagonalCascade(slotKeys, frameWidth, frameHeight) {
-    const n = slotKeys.length;
-    const span = Math.min(frameWidth, frameHeight) - MARGIN * 2;
-    const size = (span - (n - 1) * GAP) / n;
-    const step = size + GAP;
-    return slotKeys.map((slotKey, i) => ({
-      slotKey,
-      x: MARGIN + i * step,
-      y: MARGIN + i * step,
-      size
-    }));
-  }
-  function pyramidStack(slotKeys, frameWidth, frameHeight) {
-    const n = slotKeys.length;
-    const row1Count = Math.ceil(n / 2);
-    const row2Count = n - row1Count;
-    const sizeForRow = (count) => (frameWidth - MARGIN * 2 - (count - 1) * GAP) / count;
-    const size = row2Count > 0 ? Math.min(sizeForRow(row1Count), sizeForRow(row2Count)) : sizeForRow(row1Count);
-    const rowGapY = 30;
-    const totalHeight = row2Count > 0 ? size * 2 + rowGapY : size;
-    const topY = (frameHeight - totalHeight) / 2;
-    function layoutRow(keys, rowY) {
-      const rowWidth = keys.length * size + (keys.length - 1) * GAP;
-      const startX = (frameWidth - rowWidth) / 2;
-      return keys.map((slotKey, i) => ({ slotKey, x: startX + i * (size + GAP), y: rowY, size }));
-    }
-    const row1Keys = slotKeys.slice(0, row1Count);
-    const row2Keys = slotKeys.slice(row1Count);
-    const row1 = layoutRow(row1Keys, topY);
-    const row2 = row2Count > 0 ? layoutRow(row2Keys, topY + size + rowGapY) : [];
-    return [...row1, ...row2];
-  }
-  function computeGeneratedSlotRects(input) {
-    if (input.slotKeys.length === 0) {
-      throw new Error("slotKeys\uAC00 \uBE44\uC5B4 \uC788\uC2B5\uB2C8\uB2E4.");
-    }
-    switch (input.familyId) {
-      case "row-linear":
-        return rowLinear(input.slotKeys, input.frameWidth, input.frameHeight);
-      case "diagonal-cascade":
-        return diagonalCascade(input.slotKeys, input.frameWidth, input.frameHeight);
-      case "pyramid-stack":
-        return pyramidStack(input.slotKeys, input.frameWidth, input.frameHeight);
-      default:
-        throw new Error(
-          `generated family "${input.familyId}"\uC5D0 \uB300\uD55C \uBC30\uCE58 \uACF5\uC2DD\uC774 \uC544\uC9C1 \uAD6C\uD604\uB418\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4(\uC9C0\uC6D0: ${SUPPORTED_GENERATED_FAMILIES.join(", ")}).`
-        );
-    }
-  }
-
-  // src/mixedLayoutGeometry.ts
-  var MARGIN2 = 60;
-  var ROW_OVERLAP = 0.2;
-  var CELL_OVERLAP = 0.28;
-  function rowWidthFactor(count) {
-    return 1 + (count - 1) * (1 - CELL_OVERLAP);
-  }
-  function computeMixedSlotRects(input) {
-    const { groups, frameWidth, frameHeight } = input;
-    if (groups.length === 0) {
-      throw new Error("groups\uAC00 \uBE44\uC5B4 \uC788\uC2B5\uB2C8\uB2E4.");
-    }
-    if (groups.some((g) => g.slotKeys.length === 0)) {
-      throw new Error("\uBE48 slotKeys\uB97C \uAC00\uC9C4 group\uC774 \uC788\uC2B5\uB2C8\uB2E4.");
-    }
-    const maxRowWidthFactor = Math.max(...groups.map((g) => rowWidthFactor(g.slotKeys.length)));
-    const totalHeightFactor = 1 + (groups.length - 1) * (1 - ROW_OVERLAP);
-    const sizeByWidth = (frameWidth - MARGIN2 * 2) / maxRowWidthFactor;
-    const sizeByHeight = (frameHeight - MARGIN2 * 2) / totalHeightFactor;
-    const size = Math.min(sizeByWidth, sizeByHeight);
-    const rowPitchY = size * (1 - ROW_OVERLAP);
-    const totalHeight = size + (groups.length - 1) * rowPitchY;
-    const startY = (frameHeight - totalHeight) / 2;
-    const rects = [];
-    groups.forEach((group, rowIndex) => {
-      const count = group.slotKeys.length;
-      const cellPitchX = size * (1 - CELL_OVERLAP);
-      const rowWidth = size + (count - 1) * cellPitchX;
-      const startX = (frameWidth - rowWidth) / 2;
-      const rowY = startY + rowIndex * rowPitchY;
-      group.slotKeys.forEach((slotKey, i) => {
-        rects.push({ slotKey, x: startX + i * cellPitchX, y: rowY, size });
-      });
-    });
-    return rects;
-  }
-
-  // src/generatedRenderer.ts
-  var GENERATED_RENDERER_SUPPORT = [
+  // src/verifiedDerivedGeneratedRenderer.ts
+  var VERIFIED_DERIVED_GENERATED_SUPPORT = [
     {
       channelPresetId: "naver-1000x1000",
-      productGroup: "simple-meal",
-      thumbnailType: "basic",
-      familyIds: SUPPORTED_GENERATED_FAMILIES,
-      baseShellFrameName: "\uB124\uC774\uBC84_\uC18C\uACE0\uAE30\uC7A5\uC870\uB9BC130_1",
-      baseShellFrameNodeId: "69:307",
-      existingSlotLayerNames: ["image 312"]
+      targetSlotCount: 2,
+      sourceLayoutKey: "LAYOUT_02",
+      keepLayerNames: ["image 313", "image 410"]
+    },
+    {
+      channelPresetId: "naver-1000x1000",
+      targetSlotCount: 4,
+      sourceLayoutKey: "LAYOUT_03",
+      keepLayerNames: ["image 411", "image 413", "image 414", "image 415"]
+    },
+    {
+      channelPresetId: "naver-1000x1000",
+      targetSlotCount: 6,
+      sourceLayoutKey: "LAYOUT_04",
+      keepLayerNames: ["image 321", "image 312", "image 313", "image 315", "image 318", "image 319"]
+    },
+    {
+      channelPresetId: "naver-1000x1000",
+      targetSlotCount: 7,
+      sourceLayoutKey: "LAYOUT_04",
+      keepLayerNames: ["image 321", "image 312", "image 313", "image 315", "image 316", "image 318", "image 319"]
+    },
+    {
+      channelPresetId: "naver-1000x1000",
+      targetSlotCount: 8,
+      sourceLayoutKey: "LAYOUT_04",
+      keepLayerNames: [
+        "image 321",
+        "image 312",
+        "image 313",
+        "image 315",
+        "image 316",
+        "image 318",
+        "image 319",
+        "image 320"
+      ]
+    },
+    {
+      channelPresetId: "naver-1000x1000",
+      targetSlotCount: 9,
+      sourceLayoutKey: "LAYOUT_04",
+      keepLayerNames: [
+        "image 321",
+        "image 312",
+        "image 313",
+        "image 314",
+        "image 315",
+        "image 316",
+        "image 318",
+        "image 319",
+        "image 320"
+      ]
     }
   ];
   var RESULT_GAP2 = 120;
-  var GENERATED_SLOT_LAYER_PREFIX = "generated_slot_";
-  function findSupport(plan, support) {
-    if (plan.layoutSource.kind !== "generated") return void 0;
-    const familyId = plan.layoutSource.params.familyId;
-    return support.find(
-      (s) => s.channelPresetId === plan.channelPresetId && s.productGroup === plan.productGroup && s.thumbnailType === plan.thumbnailType && s.familyIds.includes(familyId)
-    );
-  }
-  function groupSlotsByAsset(slots) {
-    const order = [];
-    const byAsset = /* @__PURE__ */ new Map();
-    for (const slot of slots) {
-      if (!byAsset.has(slot.assetKey)) {
-        byAsset.set(slot.assetKey, []);
-        order.push(slot.assetKey);
-      }
-      byAsset.get(slot.assetKey).push(slot.slotKey);
-    }
-    return order.map((assetKey) => ({ assetKey, slotKeys: byAsset.get(assetKey) }));
-  }
-  function findShellFrame(s) {
-    if (s.baseShellFrameNodeId) {
-      const byId = figma.getNodeById(s.baseShellFrameNodeId);
+  var RECENTER_THRESHOLD_RATIO = 0.08;
+  function findVerifiedTemplateFrame(binding) {
+    if (binding.templateFrameNodeId) {
+      const byId = figma.getNodeById(binding.templateFrameNodeId);
       if (byId && byId.type === "FRAME") return byId;
     }
-    const byName = figma.currentPage.findOne((n) => n.type === "FRAME" && n.name === s.baseShellFrameName);
+    const byName = figma.currentPage.findOne((n) => n.type === "FRAME" && n.name === binding.templateFrameName);
     return byName && byName.type === "FRAME" ? byName : null;
   }
-  async function renderGeneratedPlan(plan, support = GENERATED_RENDERER_SUPPORT, options = {}) {
-    var _a, _b;
+  function findSupport(plan, support) {
+    if (plan.layoutSource.kind !== "generated") return void 0;
+    return support.find((s) => s.channelPresetId === plan.channelPresetId && s.targetSlotCount === plan.slots.length);
+  }
+  async function renderVerifiedDerivedGeneratedPlan(plan, support = VERIFIED_DERIVED_GENERATED_SUPPORT, bindings = FIGMA_TEMPLATE_BINDINGS, options = {}) {
+    var _a, _b, _c;
     if (plan.layoutSource.kind !== "generated") {
       return { ok: false, message: "generated plan\uC774 \uC544\uB2D9\uB2C8\uB2E4(verified plan\uC740 renderer.ts\uB97C \uC4F0\uC138\uC694)." };
     }
@@ -2049,77 +1978,85 @@
     if (!matched) {
       return {
         ok: false,
-        message: `channelPresetId "${plan.channelPresetId}"(${plan.productGroup}/${plan.thumbnailType}, family "${plan.layoutSource.params.familyId}")\uB294 generated renderer\uAC00 \uC544\uC9C1 \uC9C0\uC6D0\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.`
+        message: `channelPresetId "${plan.channelPresetId}"(\uC2AC\uB86F ${plan.slots.length}\uAC1C)\uC5D0 \uB300\uD55C verified-derived \uAE30\uBCF8 \uD15C\uD50C\uB9BF\uC774 \uC544\uC9C1 \uC5C6\uC2B5\uB2C8\uB2E4(GENERATED_BASE_TEMPLATE_NOT_AVAILABLE).`
       };
     }
-    const shellFrame = findShellFrame(matched);
-    if (!shellFrame) {
+    if (matched.keepLayerNames.length !== plan.slots.length) {
       return {
         ok: false,
-        message: `generated renderer\uC758 base shell \uD504\uB808\uC784 "${matched.baseShellFrameName}"\uC744(\uB97C) \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`
+        message: `\uC124\uC815 \uC624\uB958: keepLayerNames \uAC1C\uC218(${matched.keepLayerNames.length})\uC640 plan.slots \uAC1C\uC218(${plan.slots.length})\uAC00 \uC77C\uCE58\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.`
       };
     }
-    const { familyId, slotCount } = plan.layoutSource.params;
-    if (slotCount !== plan.slots.length) {
+    const sourceBinding = resolveTemplate(matched.sourceLayoutKey, matched.channelPresetId, bindings);
+    if (!sourceBinding) {
       return {
         ok: false,
-        message: `\uC2AC\uB86F \uC218 \uBD88\uC77C\uCE58: layoutSource.params.slotCount=${slotCount}, plan.slots.length=${plan.slots.length}`
+        message: `\uD30C\uC0DD \uC6D0\uBCF8 layoutKey "${matched.sourceLayoutKey}" + channelPresetId "${matched.channelPresetId}"\uC758 verified template binding\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.`
       };
     }
-    const distinctAssetKeyCount = new Set(plan.slots.map((s) => s.assetKey)).size;
-    const isMixed = distinctAssetKeyCount >= 2;
-    let rects;
-    try {
-      rects = isMixed ? computeMixedSlotRects({
-        groups: groupSlotsByAsset(plan.slots),
-        frameWidth: shellFrame.width,
-        frameHeight: shellFrame.height
-      }) : computeGeneratedSlotRects({
-        familyId,
-        slotKeys: plan.slots.map((s) => s.slotKey),
-        frameWidth: shellFrame.width,
-        frameHeight: shellFrame.height
-      });
-    } catch (err) {
-      return { ok: false, message: err.message };
+    const sourceFrame = findVerifiedTemplateFrame(sourceBinding);
+    if (!sourceFrame) {
+      return { ok: false, message: `\uC6D0\uBCF8 verified \uD504\uB808\uC784 "${sourceBinding.templateFrameName}"\uC744(\uB97C) \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.` };
     }
-    const clone = shellFrame.clone();
-    clone.name = `${shellFrame.name} (generated ${isMixed ? "mixed" : familyId} ${slotCount} \uC790\uB3D9\uC0DD\uC131 \uACB0\uACFC)`;
-    clone.x = shellFrame.x + shellFrame.width + RESULT_GAP2;
-    clone.y = shellFrame.y;
-    (_a = shellFrame.parent) == null ? void 0 : _a.appendChild(clone);
-    for (const layerName of matched.existingSlotLayerNames) {
-      const oldSlot = clone.findOne((n) => n.name === layerName);
-      oldSlot == null ? void 0 : oldSlot.remove();
-    }
-    for (const slot of plan.slots) {
-      const rect = rects.find((r) => r.slotKey === slot.slotKey);
-      if (!rect) {
-        clone.remove();
-        return { ok: false, message: `\uC2AC\uB86F "${slot.slotKey}"\uC5D0 \uB300\uD55C generated geometry\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.` };
+    const clone = sourceFrame.clone();
+    clone.name = `${sourceFrame.name} (generated-v2 ${plan.slots.length} \uC790\uB3D9\uC0DD\uC131 \uACB0\uACFC)`;
+    clone.x = sourceFrame.x + sourceFrame.width + RESULT_GAP2;
+    clone.y = sourceFrame.y;
+    (_a = sourceFrame.parent) == null ? void 0 : _a.appendChild(clone);
+    const keepSet = new Set(matched.keepLayerNames);
+    for (const b of sourceBinding.slotBindings) {
+      if (!keepSet.has(b.layerName)) {
+        (_b = clone.findOne((n) => n.name === b.layerName)) == null ? void 0 : _b.remove();
       }
-      const resolved = await resolveProductAsset(slot.assetKey);
+    }
+    const keptLayers = [];
+    for (let i = 0; i < matched.keepLayerNames.length; i++) {
+      const layerName = matched.keepLayerNames[i];
+      const layer = clone.findOne((n) => n.name === layerName);
+      if (!layer || !("fills" in layer)) {
+        clone.remove();
+        return { ok: false, message: `\uC720\uC9C0 \uB300\uC0C1 \uB808\uC774\uC5B4 "${layerName}"\uC744(\uB97C) \uBCF5\uC81C\uB41C \uD504\uB808\uC784\uC5D0\uC11C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.` };
+      }
+      const resolved = await resolveProductAsset(plan.slots[i].assetKey);
       if (!resolved.ok) {
         clone.remove();
         return { ok: false, message: resolved.message };
       }
-      const node = figma.createRectangle();
-      node.name = `${GENERATED_SLOT_LAYER_PREFIX}${slot.slotKey}`;
-      node.resize(rect.size, rect.size);
-      node.x = rect.x;
-      node.y = rect.y;
-      node.fills = [{ type: "IMAGE", imageHash: resolved.imageHash, scaleMode: "FILL" }];
-      clone.appendChild(node);
+      layer.fills = [
+        { type: "IMAGE", imageHash: resolved.imageHash, scaleMode: "FILL" }
+      ];
+      keptLayers.push(layer);
     }
-    if ((_b = options.select) != null ? _b : true) {
+    const minX = Math.min(...keptLayers.map((n) => n.x));
+    const minY = Math.min(...keptLayers.map((n) => n.y));
+    const maxX = Math.max(...keptLayers.map((n) => n.x + n.width));
+    const maxY = Math.max(...keptLayers.map((n) => n.y + n.height));
+    const bboxCenterX = (minX + maxX) / 2;
+    const bboxCenterY = (minY + maxY) / 2;
+    const frameCenterX = clone.width / 2;
+    const frameCenterY = clone.height / 2;
+    const dx = frameCenterX - bboxCenterX;
+    const dy = frameCenterY - bboxCenterY;
+    const lopsided = Math.abs(dx) > clone.width * RECENTER_THRESHOLD_RATIO || Math.abs(dy) > clone.height * RECENTER_THRESHOLD_RATIO;
+    if (lopsided) {
+      for (const layer of keptLayers) {
+        layer.x += dx;
+        layer.y += dy;
+      }
+    }
+    if ((_c = options.select) != null ? _c : true) {
       figma.currentPage.selection = [clone];
       figma.viewport.scrollAndZoomIntoView([clone]);
     }
-    return { ok: true, nodeId: clone.id, familyId, slotCount };
+    return { ok: true, nodeId: clone.id, sourceLayoutKey: matched.sourceLayoutKey, slotCount: plan.slots.length, recentered: lopsided };
   }
 
   // src/renderPreflight.ts
-  function checkRenderability(input, bindings = FIGMA_TEMPLATE_BINDINGS, generatedSupport = GENERATED_RENDERER_SUPPORT) {
+  function parseGeneratedSlotCount(layoutKey) {
+    const match = layoutKey.match(/_(\d+)$/);
+    return match ? Number(match[1]) : null;
+  }
+  function checkRenderability(input, bindings = FIGMA_TEMPLATE_BINDINGS, verifiedDerivedSupport = VERIFIED_DERIVED_GENERATED_SUPPORT) {
     if (input.layoutSource === "verified") {
       const binding = resolveTemplate(input.layoutKey, input.channelPresetId, bindings);
       if (!binding) {
@@ -2131,22 +2068,20 @@
       }
       return { renderable: true };
     }
-    const supported = generatedSupport.some(
-      (s) => {
-        var _a;
-        return s.channelPresetId === input.channelPresetId && s.familyIds.includes((_a = input.arrangementFamily) != null ? _a : "") && (input.productGroup === void 0 || s.productGroup === input.productGroup) && (input.thumbnailType === void 0 || s.thumbnailType === input.thumbnailType);
-      }
+    const slotCount = parseGeneratedSlotCount(input.layoutKey);
+    const supported = verifiedDerivedSupport.some(
+      (s) => s.channelPresetId === input.channelPresetId && s.targetSlotCount === slotCount
     );
     if (!supported) {
       return {
         renderable: false,
-        reason: "GENERATED_RENDERER_NOT_SUPPORTED",
-        message: `channelPresetId "${input.channelPresetId}"(family "${input.arrangementFamily}")\uB294 generated renderer\uAC00 \uC544\uC9C1 \uC9C0\uC6D0\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.`
+        reason: "GENERATED_BASE_TEMPLATE_NOT_AVAILABLE",
+        message: `channelPresetId "${input.channelPresetId}"(\uC2AC\uB86F ${slotCount != null ? slotCount : "?"}\uAC1C)\uC5D0 \uB300\uD55C verified-derived \uAE30\uBCF8 \uD15C\uD50C\uB9BF\uC774 \uC544\uC9C1 \uC5C6\uC5B4 generated\uB85C \uC0DD\uC131\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`
       };
     }
     return { renderable: true };
   }
-  function checkRenderabilityForPlan(plan, bindings = FIGMA_TEMPLATE_BINDINGS, generatedSupport = GENERATED_RENDERER_SUPPORT) {
+  function checkRenderabilityForPlan(plan, bindings = FIGMA_TEMPLATE_BINDINGS, verifiedDerivedSupport = VERIFIED_DERIVED_GENERATED_SUPPORT) {
     return checkRenderability(
       {
         layoutKey: plan.layoutKey,
@@ -2157,7 +2092,7 @@
         thumbnailType: plan.thumbnailType
       },
       bindings,
-      generatedSupport
+      verifiedDerivedSupport
     );
   }
   async function checkAssetResolvability(plan, resolveAsset = resolveProductAsset) {
@@ -2194,7 +2129,7 @@
     var _a, _b, _c, _d;
     const includeReviewRequired = (_a = options.includeReviewRequired) != null ? _a : false;
     const bindings = (_b = rendererDeps.bindings) != null ? _b : FIGMA_TEMPLATE_BINDINGS;
-    const generatedSupport = (_c = rendererDeps.generatedSupport) != null ? _c : GENERATED_RENDERER_SUPPORT;
+    const verifiedDerivedSupport = (_c = rendererDeps.verifiedDerivedSupport) != null ? _c : VERIFIED_DERIVED_GENERATED_SUPPORT;
     const resolveAsset = (_d = rendererDeps.resolveAsset) != null ? _d : resolveProductAsset;
     const verifiedPage = await findOrCreatePage(AUTO_GENERATED_VERIFIED_PAGE_NAME);
     const reviewPage = await findOrCreatePage(AUTO_GENERATED_REVIEW_PAGE_NAME);
@@ -2241,7 +2176,7 @@
           });
           continue;
         }
-        const renderability = checkRenderabilityForPlan(plan, bindings, generatedSupport);
+        const renderability = checkRenderabilityForPlan(plan, bindings, verifiedDerivedSupport);
         if (!renderability.renderable) {
           outputs.push({
             workOrderId: wo.workId,
@@ -2271,7 +2206,7 @@
           });
           continue;
         }
-        const renderResult = source === "verified" ? await renderPlan(plan, bindings, { select: false }) : await renderGeneratedPlan(plan, generatedSupport, { select: false });
+        const renderResult = source === "verified" ? await renderPlan(plan, bindings, { select: false }) : await renderVerifiedDerivedGeneratedPlan(plan, verifiedDerivedSupport, bindings, { select: false });
         if (!renderResult.ok) {
           outputs.push({
             workOrderId: wo.workId,

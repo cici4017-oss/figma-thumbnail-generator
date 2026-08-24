@@ -1,6 +1,6 @@
 import type { CompositionPlan } from '@thumbnail-generator/core';
 import { resolveTemplate, FIGMA_TEMPLATE_BINDINGS, type FigmaTemplateBinding } from './templateMapper';
-import { GENERATED_RENDERER_SUPPORT, type GeneratedRendererSupport } from './generatedRenderer';
+import { VERIFIED_DERIVED_GENERATED_SUPPORT, type VerifiedDerivedSupport } from './verifiedDerivedGeneratedRenderer';
 import { resolveProductAsset, type ResolveAssetResult } from './assetResolver';
 
 /**
@@ -19,7 +19,7 @@ import { resolveProductAsset, type ResolveAssetResult } from './assetResolver';
 
 export type RenderabilityReason =
   | 'NO_FIGMA_TEMPLATE_BINDING'
-  | 'GENERATED_RENDERER_NOT_SUPPORTED'
+  | 'GENERATED_BASE_TEMPLATE_NOT_AVAILABLE'
   | 'PRODUCT_ASSET_NOT_RESOLVABLE';
 
 export type RenderabilityResult =
@@ -36,16 +36,27 @@ export interface RenderabilityInput {
   layoutKey: string;
   channelPresetId: string;
   layoutSource: 'verified' | 'generated';
-  /** generated일 때만 의미 있음 — GeneratedLayoutParams.familyId. verified면 무시된다. */
+  /**
+   * generated일 때만 의미 있었던 필드(GeneratedLayoutParams.familyId) — Generated V2(verified-
+   * template-derived)로 전환하면서 renderability 판정에는 더 이상 쓰지 않는다(대신 layoutKey
+   * 끝의 슬롯 수로 판정한다). 기존 호출부(BatchPreview.tsx)와의 타입 호환을 위해 필드 자체는
+   * 남겨둔다.
+   */
   arrangementFamily: string | null;
   productGroup?: string;
   thumbnailType?: string;
 }
 
+/** core generateFallbackLayout이 만드는 layoutKey 형식(`GENERATED_<FAMILY>_<슬롯수>`)에서 슬롯 수를 뽑아낸다. */
+function parseGeneratedSlotCount(layoutKey: string): number | null {
+  const match = layoutKey.match(/_(\d+)$/);
+  return match ? Number(match[1]) : null;
+}
+
 export function checkRenderability(
   input: RenderabilityInput,
   bindings: FigmaTemplateBinding[] = FIGMA_TEMPLATE_BINDINGS,
-  generatedSupport: GeneratedRendererSupport[] = GENERATED_RENDERER_SUPPORT,
+  verifiedDerivedSupport: VerifiedDerivedSupport[] = VERIFIED_DERIVED_GENERATED_SUPPORT,
 ): RenderabilityResult {
   if (input.layoutSource === 'verified') {
     const binding = resolveTemplate(input.layoutKey, input.channelPresetId, bindings);
@@ -61,30 +72,29 @@ export function checkRenderability(
     return { renderable: true };
   }
 
-  const supported = generatedSupport.some(
-    (s) =>
-      s.channelPresetId === input.channelPresetId &&
-      s.familyIds.includes(input.arrangementFamily ?? '') &&
-      (input.productGroup === undefined || s.productGroup === input.productGroup) &&
-      (input.thumbnailType === undefined || s.thumbnailType === input.thumbnailType),
+  // Generated V2: 순수 공식이 아니라 verified frame에서 파생하므로, "이 채널+슬롯 수 조합에
+  // 파생 가능한 base 템플릿이 있는가"로 판정한다(예전처럼 family/채널 지원 여부가 아니다).
+  const slotCount = parseGeneratedSlotCount(input.layoutKey);
+  const supported = verifiedDerivedSupport.some(
+    (s) => s.channelPresetId === input.channelPresetId && s.targetSlotCount === slotCount,
   );
   if (!supported) {
     return {
       renderable: false,
-      reason: 'GENERATED_RENDERER_NOT_SUPPORTED',
+      reason: 'GENERATED_BASE_TEMPLATE_NOT_AVAILABLE',
       message:
-        `channelPresetId "${input.channelPresetId}"(family "${input.arrangementFamily}")는 ` +
-        `generated renderer가 아직 지원하지 않습니다.`,
+        `channelPresetId "${input.channelPresetId}"(슬롯 ${slotCount ?? '?'}개)에 대한 ` +
+        `verified-derived 기본 템플릿이 아직 없어 generated로 생성할 수 없습니다.`,
     };
   }
   return { renderable: true };
 }
 
-/** 실제 렌더 호출 직전(renderer.ts/generatedRenderer.ts 호출부)에서 CompositionPlan으로 바로 확인할 때 쓴다. */
+/** 실제 렌더 호출 직전(renderer.ts/verifiedDerivedGeneratedRenderer.ts 호출부)에서 CompositionPlan으로 바로 확인할 때 쓴다. */
 export function checkRenderabilityForPlan(
   plan: CompositionPlan,
   bindings: FigmaTemplateBinding[] = FIGMA_TEMPLATE_BINDINGS,
-  generatedSupport: GeneratedRendererSupport[] = GENERATED_RENDERER_SUPPORT,
+  verifiedDerivedSupport: VerifiedDerivedSupport[] = VERIFIED_DERIVED_GENERATED_SUPPORT,
 ): RenderabilityResult {
   return checkRenderability(
     {
@@ -96,7 +106,7 @@ export function checkRenderabilityForPlan(
       thumbnailType: plan.thumbnailType,
     },
     bindings,
-    generatedSupport,
+    verifiedDerivedSupport,
   );
 }
 

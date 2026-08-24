@@ -53030,28 +53030,71 @@
     return bindings.find((b) => b.layoutKey === layoutKey && b.channelPresetId === channelPresetId);
   }
 
-  // src/generatedLayoutGeometry.ts
-  var SUPPORTED_GENERATED_FAMILIES = [
-    "row-linear",
-    "diagonal-cascade",
-    "pyramid-stack"
-  ];
-
-  // src/generatedRenderer.ts
-  var GENERATED_RENDERER_SUPPORT = [
+  // src/verifiedDerivedGeneratedRenderer.ts
+  var VERIFIED_DERIVED_GENERATED_SUPPORT = [
     {
       channelPresetId: "naver-1000x1000",
-      productGroup: "simple-meal",
-      thumbnailType: "basic",
-      familyIds: SUPPORTED_GENERATED_FAMILIES,
-      baseShellFrameName: "\uB124\uC774\uBC84_\uC18C\uACE0\uAE30\uC7A5\uC870\uB9BC130_1",
-      baseShellFrameNodeId: "69:307",
-      existingSlotLayerNames: ["image 312"]
+      targetSlotCount: 2,
+      sourceLayoutKey: "LAYOUT_02",
+      keepLayerNames: ["image 313", "image 410"]
+    },
+    {
+      channelPresetId: "naver-1000x1000",
+      targetSlotCount: 4,
+      sourceLayoutKey: "LAYOUT_03",
+      keepLayerNames: ["image 411", "image 413", "image 414", "image 415"]
+    },
+    {
+      channelPresetId: "naver-1000x1000",
+      targetSlotCount: 6,
+      sourceLayoutKey: "LAYOUT_04",
+      keepLayerNames: ["image 321", "image 312", "image 313", "image 315", "image 318", "image 319"]
+    },
+    {
+      channelPresetId: "naver-1000x1000",
+      targetSlotCount: 7,
+      sourceLayoutKey: "LAYOUT_04",
+      keepLayerNames: ["image 321", "image 312", "image 313", "image 315", "image 316", "image 318", "image 319"]
+    },
+    {
+      channelPresetId: "naver-1000x1000",
+      targetSlotCount: 8,
+      sourceLayoutKey: "LAYOUT_04",
+      keepLayerNames: [
+        "image 321",
+        "image 312",
+        "image 313",
+        "image 315",
+        "image 316",
+        "image 318",
+        "image 319",
+        "image 320"
+      ]
+    },
+    {
+      channelPresetId: "naver-1000x1000",
+      targetSlotCount: 9,
+      sourceLayoutKey: "LAYOUT_04",
+      keepLayerNames: [
+        "image 321",
+        "image 312",
+        "image 313",
+        "image 314",
+        "image 315",
+        "image 316",
+        "image 318",
+        "image 319",
+        "image 320"
+      ]
     }
   ];
 
   // src/renderPreflight.ts
-  function checkRenderability(input, bindings = FIGMA_TEMPLATE_BINDINGS, generatedSupport = GENERATED_RENDERER_SUPPORT) {
+  function parseGeneratedSlotCount(layoutKey) {
+    const match = layoutKey.match(/_(\d+)$/);
+    return match ? Number(match[1]) : null;
+  }
+  function checkRenderability(input, bindings = FIGMA_TEMPLATE_BINDINGS, verifiedDerivedSupport = VERIFIED_DERIVED_GENERATED_SUPPORT) {
     if (input.layoutSource === "verified") {
       const binding = resolveTemplate(input.layoutKey, input.channelPresetId, bindings);
       if (!binding) {
@@ -53063,17 +53106,15 @@
       }
       return { renderable: true };
     }
-    const supported = generatedSupport.some(
-      (s) => {
-        var _a;
-        return s.channelPresetId === input.channelPresetId && s.familyIds.includes((_a = input.arrangementFamily) != null ? _a : "") && (input.productGroup === void 0 || s.productGroup === input.productGroup) && (input.thumbnailType === void 0 || s.thumbnailType === input.thumbnailType);
-      }
+    const slotCount = parseGeneratedSlotCount(input.layoutKey);
+    const supported = verifiedDerivedSupport.some(
+      (s) => s.channelPresetId === input.channelPresetId && s.targetSlotCount === slotCount
     );
     if (!supported) {
       return {
         renderable: false,
-        reason: "GENERATED_RENDERER_NOT_SUPPORTED",
-        message: `channelPresetId "${input.channelPresetId}"(family "${input.arrangementFamily}")\uB294 generated renderer\uAC00 \uC544\uC9C1 \uC9C0\uC6D0\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.`
+        reason: "GENERATED_BASE_TEMPLATE_NOT_AVAILABLE",
+        message: `channelPresetId "${input.channelPresetId}"(\uC2AC\uB86F ${slotCount != null ? slotCount : "?"}\uAC1C)\uC5D0 \uB300\uD55C verified-derived \uAE30\uBCF8 \uD15C\uD50C\uB9BF\uC774 \uC544\uC9C1 \uC5C6\uC5B4 generated\uB85C \uC0DD\uC131\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`
       };
     }
     return { renderable: true };

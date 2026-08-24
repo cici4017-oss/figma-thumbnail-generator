@@ -1,5 +1,6 @@
 import { MockNode, type MockFigmaHandle } from './mockFigma';
 import type { FigmaTemplateBinding } from '../templateMapper';
+import type { VerifiedDerivedSupport } from '../verifiedDerivedGeneratedRenderer';
 
 /**
  * 실제 회사 Figma 파일과 "같은 구조"(프레임 하나 안에 이미지 슬롯 레이어 여러 개 + 별도
@@ -64,4 +65,16 @@ export const MOCK_TEMPLATE_BINDING: FigmaTemplateBinding = {
     { slotKey: 'slot_2', layerName: MOCK_SLOT_LAYER_NAMES[1] },
     { slotKey: 'slot_3', layerName: MOCK_SLOT_LAYER_NAMES[2] },
   ],
+};
+
+/**
+ * Generated V2(verified-template-derived) 테스트용 — MOCK_TEMPLATE_BINDING(LAYOUT_02, 슬롯 3개:
+ * mock_slot_1/2/3, x=0/320/640)에서 가운데(mock_slot_2)를 제거해 슬롯 2개를 파생한다. 실제
+ * naver LAYOUT_02(3->2)와 동일한 "가운데부터 제거" 원칙을 그대로 재현한다.
+ */
+export const MOCK_VERIFIED_DERIVED_SUPPORT: VerifiedDerivedSupport = {
+  channelPresetId: 'naver-1000x1000',
+  targetSlotCount: 2,
+  sourceLayoutKey: 'LAYOUT_02',
+  keepLayerNames: [MOCK_SLOT_LAYER_NAMES[0], MOCK_SLOT_LAYER_NAMES[2]],
 };
