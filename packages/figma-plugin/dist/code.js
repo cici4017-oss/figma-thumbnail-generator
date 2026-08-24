@@ -1547,8 +1547,8 @@
     );
     return byName && byName.type === "FRAME" ? byName : null;
   }
-  async function renderPlan(plan, bindings = FIGMA_TEMPLATE_BINDINGS) {
-    var _a;
+  async function renderPlan(plan, bindings = FIGMA_TEMPLATE_BINDINGS, options = {}) {
+    var _a, _b;
     const binding = resolveTemplate(plan.layoutKey, plan.channelPresetId, bindings);
     if (!binding) {
       return {
@@ -1599,8 +1599,10 @@
         { type: "IMAGE", imageHash: resolved.imageHash, scaleMode: "FILL" }
       ];
     }
-    figma.currentPage.selection = [clone];
-    figma.viewport.scrollAndZoomIntoView([clone]);
+    if ((_b = options.select) != null ? _b : true) {
+      figma.currentPage.selection = [clone];
+      figma.viewport.scrollAndZoomIntoView([clone]);
+    }
     return { ok: true, nodeId: clone.id };
   }
 
@@ -1698,8 +1700,8 @@
     const byName = figma.currentPage.findOne((n) => n.type === "FRAME" && n.name === s.baseShellFrameName);
     return byName && byName.type === "FRAME" ? byName : null;
   }
-  async function renderGeneratedPlan(plan, support = GENERATED_RENDERER_SUPPORT) {
-    var _a;
+  async function renderGeneratedPlan(plan, support = GENERATED_RENDERER_SUPPORT, options = {}) {
+    var _a, _b;
     if (plan.layoutSource.kind !== "generated") {
       return { ok: false, message: "generated plan\uC774 \uC544\uB2D9\uB2C8\uB2E4(verified plan\uC740 renderer.ts\uB97C \uC4F0\uC138\uC694)." };
     }
@@ -1763,8 +1765,10 @@
       node.fills = [{ type: "IMAGE", imageHash: resolved.imageHash, scaleMode: "FILL" }];
       clone.appendChild(node);
     }
-    figma.currentPage.selection = [clone];
-    figma.viewport.scrollAndZoomIntoView([clone]);
+    if ((_b = options.select) != null ? _b : true) {
+      figma.currentPage.selection = [clone];
+      figma.viewport.scrollAndZoomIntoView([clone]);
+    }
     return { ok: true, nodeId: clone.id, familyId, slotCount };
   }
 
@@ -1892,7 +1896,7 @@
           });
           continue;
         }
-        const renderResult = source === "verified" ? await renderPlan(plan, bindings) : await renderGeneratedPlan(plan, generatedSupport);
+        const renderResult = source === "verified" ? await renderPlan(plan, bindings, { select: false }) : await renderGeneratedPlan(plan, generatedSupport, { select: false });
         if (!renderResult.ok) {
           outputs.push({
             workOrderId: wo.workId,

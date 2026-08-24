@@ -79,9 +79,16 @@ function findShellFrame(s: GeneratedRendererSupport): FrameNode | null {
   return byName && byName.type === 'FRAME' ? byName : null;
 }
 
+/**
+ * options.select(기본 true): 생성 직후 결과를 선택/화면 이동한다. renderer.ts의 renderPlan과
+ * 동일한 이유로, batchRenderer.ts처럼 생성 후 다른 페이지(AUTO_GENERATED_REVIEW)로 옮기는
+ * 흐름에서는 반드시 false로 넘겨야 한다("The selection of a page can only include nodes in
+ * that page" 오류 방지).
+ */
 export async function renderGeneratedPlan(
   plan: CompositionPlan,
   support: GeneratedRendererSupport[] = GENERATED_RENDERER_SUPPORT,
+  options: { select?: boolean } = {},
 ): Promise<GeneratedRenderResult> {
   if (plan.layoutSource.kind !== 'generated') {
     return { ok: false, message: 'generated plan이 아닙니다(verified plan은 renderer.ts를 쓰세요).' };
@@ -160,8 +167,10 @@ export async function renderGeneratedPlan(
     clone.appendChild(node);
   }
 
-  figma.currentPage.selection = [clone];
-  figma.viewport.scrollAndZoomIntoView([clone]);
+  if (options.select ?? true) {
+    figma.currentPage.selection = [clone];
+    figma.viewport.scrollAndZoomIntoView([clone]);
+  }
 
   return { ok: true, nodeId: clone.id, familyId, slotCount };
 }

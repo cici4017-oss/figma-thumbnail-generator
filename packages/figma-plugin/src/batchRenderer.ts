@@ -171,8 +171,14 @@ export async function renderBatch(
         continue;
       }
 
+      // select: false — batch로 여러 개를 연속 생성한 뒤 서로 다른 페이지(AUTO_GENERATED_VERIFIED/
+      // REVIEW)로 옮기므로, 매 항목마다 currentPage.selection을 바꾸면 이전 항목이 이미 다른
+      // 페이지로 옮겨진 뒤 그 선택 상태가 남아 "The selection of a page can only include nodes
+      // in that page" 오류로 이어진다. batch 완료 후 선택은 아예 하지 않는다(요약 메시지로 대체).
       const renderResult =
-        source === 'verified' ? await renderPlan(plan, bindings) : await renderGeneratedPlan(plan, generatedSupport);
+        source === 'verified'
+          ? await renderPlan(plan, bindings, { select: false })
+          : await renderGeneratedPlan(plan, generatedSupport, { select: false });
       if (!renderResult.ok) {
         outputs.push({
           workOrderId: wo.workId,

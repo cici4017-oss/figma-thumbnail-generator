@@ -52853,6 +52853,10 @@
     return { renderable: true };
   }
 
+  // src/batchRenderer.ts
+  var AUTO_GENERATED_VERIFIED_PAGE_NAME = "AUTO_GENERATED_VERIFIED";
+  var AUTO_GENERATED_REVIEW_PAGE_NAME = "AUTO_GENERATED_REVIEW";
+
   // src/exportNaming.ts
   function buildExportFileName(workOrderId, channelLabel, frameWidth, frameHeight) {
     return `${workOrderId}_${channelLabel}_${frameWidth}x${frameHeight}.jpg`;
@@ -52940,7 +52944,7 @@
     URL.revokeObjectURL(url);
   }
   function BatchPreview() {
-    var _a;
+    var _a, _b;
     const [preview, setPreview] = (0, import_react.useState)(null);
     const [batch, setBatch] = (0, import_react.useState)(null);
     const [error, setError] = (0, import_react.useState)(null);
@@ -53065,7 +53069,12 @@
       post({ type: "exportBatch", items });
     };
     const generatedCount = selectExportableOutputs(renderResult).length;
-    const visibleRows = (_a = preview == null ? void 0 : preview.rows.filter((r) => filter === "all" || r.overallStatus === filter)) != null ? _a : [];
+    const generatedPages = Array.from(
+      new Set(
+        ((_a = renderResult == null ? void 0 : renderResult.outputs) != null ? _a : []).filter((o) => o.outcome === "generated").map((o) => o.source === "verified" ? AUTO_GENERATED_VERIFIED_PAGE_NAME : AUTO_GENERATED_REVIEW_PAGE_NAME)
+      )
+    );
+    const visibleRows = (_b = preview == null ? void 0 : preview.rows.filter((r) => filter === "all" || r.overallStatus === filter)) != null ? _b : [];
     return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { style: { margin: "4px 0", color: "#666" }, children: '\uC791\uC5C5 \uBAA9\uB85D\uC744 \uB123\uC73C\uBA74 \uC791\uC5C5ID \uAE30\uC900\uC73C\uB85C \uBB36\uACE0, \uCC44\uB110\uC5D0 \uB4F1\uB85D\uB41C \uCD9C\uB825 \uADDC\uACA9(preset)\uB9C8\uB2E4 Layout \uC120\uD0DD(verified/generated fallback)\uAE4C\uC9C0 \uC2DC\uBBAC\uB808\uC774\uC158\uD55C \uBBF8\uB9AC\uBCF4\uAE30\uB97C \uBCF4\uC5EC\uC90D\uB2C8\uB2E4. \uD55C \uCC44\uB110\uC774 \uC5EC\uB7EC \uADDC\uACA9(\uC608: \uCE74\uCE74\uC624 1000\xD71000 + 750\xD7422)\uC744 \uAC00\uC9C0\uBA74 \uC791\uC5C5ID \uD558\uB098\uAC00 \uADDC\uACA9 \uC218\uB9CC\uD07C \uCD9C\uB825\uC73C\uB85C \uB098\uB258\uACE0, \uAC01 \uCD9C\uB825\uC740 \uC11C\uB85C \uB3C5\uB9BD\uC801\uC73C\uB85C \uD310\uC815\uB429\uB2C8\uB2E4. \uC544\uB798 "Figma\uC5D0 \uC77C\uAD04 \uC0DD\uC131"\uC740 \uBBF8\uB9AC\uBCF4\uAE30 \uD310\uC815\uC744 \uADF8\uB300\uB85C \uB2E4\uC2DC \uACC4\uC0B0\uD574 \uC2E4\uC81C\uB85C clone\uC744 \uB9CC\uB4ED\uB2C8\uB2E4 \u2014 \uAE30\uC874 \uC6D0\uBCF8/\uD15C\uD50C\uB9BF \uD504\uB808\uC784\uC740 \uC218\uC815\uD558\uC9C0 \uC54A\uACE0, \uACB0\uACFC\uB294 AUTO_GENERATED_VERIFIED / AUTO_GENERATED_REVIEW \uD398\uC774\uC9C0\uC5D0 \uC815\uB9AC\uB429\uB2C8\uB2E4.' }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { border: "1px solid #18a0fb", borderRadius: 6, padding: 10, margin: "8px 0" }, children: [
@@ -53168,12 +53177,18 @@
               "\uAC74"
             ] })
           ] }),
-          generatedCount > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", alignItems: "center", gap: 10, margin: "0 0 8px 0" }, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { fontWeight: 600 }, children: [
-              generatedCount,
-              "\uAC1C \uC0DD\uC131 \uC644\uB8CC"
+          generatedCount > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", alignItems: "center", gap: 10, margin: "0 0 4px 0" }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { fontWeight: 600 }, children: [
+                generatedCount,
+                "\uAC1C \uC0DD\uC131 \uC644\uB8CC"
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { onClick: onExportBatch, disabled: exporting, children: exporting ? "\uB0B4\uBCF4\uB0B4\uB294 \uC911\u2026" : "JPEG \uC77C\uAD04 \uC800\uC7A5" })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { onClick: onExportBatch, disabled: exporting, children: exporting ? "\uB0B4\uBCF4\uB0B4\uB294 \uC911\u2026" : "JPEG \uC77C\uAD04 \uC800\uC7A5" })
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", { style: { margin: "0 0 8px 0", fontSize: 11, color: "#666" }, children: [
+              "\uC0DD\uC131\uB41C \uD398\uC774\uC9C0: ",
+              generatedPages.join(", ")
+            ] })
           ] }),
           exportNotice && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { style: { margin: "0 0 8px 0", fontSize: 12, color: "#1e8e3e" }, children: exportNotice })
         ] }),
@@ -53204,11 +53219,11 @@
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { style: cellStyle, children: "\uC624\uB958/\uAC80\uD1A0 \uC0AC\uC720" })
           ] }) }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("tbody", { children: visibleRows.map((row) => {
-            var _a2, _b, _c;
+            var _a2, _b2, _c;
             const lineCount = Math.max(row.outputs.length, 1);
             return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_react.default.Fragment, { children: row.outputs.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("tr", { children: [
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: groupCellStyle, children: row.workId }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: groupCellStyle, children: (_b = (_a2 = row.channelLabel) != null ? _a2 : row.channelId) != null ? _b : "(\uBD88\uC77C\uCE58/\uBBF8\uD655\uC778)" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: groupCellStyle, children: (_b2 = (_a2 = row.channelLabel) != null ? _a2 : row.channelId) != null ? _b2 : "(\uBD88\uC77C\uCE58/\uBBF8\uD655\uC778)" }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: groupCellStyle, children: row.productSummary }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: groupCellStyle, children: row.totalQuantity }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: cellStyle, colSpan: 6, children: "(\uCC44\uB110 fan-out \uBBF8\uC2DC\uB3C4)" }),
@@ -53218,11 +53233,11 @@
                 (_c = row.parserReason) != null ? _c : ""
               ] })
             ] }) : row.outputs.map((output, i) => {
-              var _a3, _b2, _c2, _d, _e;
+              var _a3, _b3, _c2, _d, _e;
               return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("tr", { children: [
                 i === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
                   /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: groupCellStyle, rowSpan: lineCount, children: row.workId }),
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: groupCellStyle, rowSpan: lineCount, children: (_b2 = (_a3 = row.channelLabel) != null ? _a3 : row.channelId) != null ? _b2 : "(\uBD88\uC77C\uCE58/\uBBF8\uD655\uC778)" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: groupCellStyle, rowSpan: lineCount, children: (_b3 = (_a3 = row.channelLabel) != null ? _a3 : row.channelId) != null ? _b3 : "(\uBD88\uC77C\uCE58/\uBBF8\uD655\uC778)" }),
                   /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: groupCellStyle, rowSpan: lineCount, children: row.productSummary }),
                   /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: groupCellStyle, rowSpan: lineCount, children: row.totalQuantity })
                 ] }),

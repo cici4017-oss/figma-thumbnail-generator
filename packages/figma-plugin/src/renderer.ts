@@ -26,10 +26,17 @@ function findTemplateFrame(binding: FigmaTemplateBinding): FrameNode | null {
  *
  * bindings를 생략하면 실제 회사 파일용 FIGMA_TEMPLATE_BINDINGS를 쓴다. 테스트에서는 mock 바인딩을
  * 명시적으로 넘겨서, 회사 Figma 파일 없이도 이 함수를 그대로 검증할 수 있다(src/mock 참고).
+ *
+ * options.select(기본 true): 생성 직후 결과를 선택/화면 이동한다. batchRenderer.ts처럼 여러 개를
+ * 연속 생성한 뒤 서로 다른 페이지(AUTO_GENERATED_VERIFIED/REVIEW)로 옮기는 흐름에서는 반드시
+ * false로 넘겨야 한다 — 이 함수가 끝난 뒤 clone이 다른 페이지로 이동하면, 남아있던
+ * "figma.currentPage.selection = [clone]"이 더 이상 currentPage에 속하지 않는 노드를 가리키게
+ * 되어 "The selection of a page can only include nodes in that page" 오류로 이어진다.
  */
 export async function renderPlan(
   plan: CompositionPlan,
   bindings: FigmaTemplateBinding[] = FIGMA_TEMPLATE_BINDINGS,
+  options: { select?: boolean } = {},
 ): Promise<RenderPlanResult> {
   const binding = resolveTemplate(plan.layoutKey, plan.channelPresetId, bindings);
   if (!binding) {
@@ -90,8 +97,10 @@ export async function renderPlan(
     ];
   }
 
-  figma.currentPage.selection = [clone];
-  figma.viewport.scrollAndZoomIntoView([clone]);
+  if (options.select ?? true) {
+    figma.currentPage.selection = [clone];
+    figma.viewport.scrollAndZoomIntoView([clone]);
+  }
 
   return { ok: true, nodeId: clone.id };
 }

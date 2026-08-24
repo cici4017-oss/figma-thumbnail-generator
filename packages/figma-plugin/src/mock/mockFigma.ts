@@ -103,18 +103,31 @@ export interface MockFigmaHandle {
   currentPage: MockNode;
   /** 테스트에서 트리를 직접 조립할 때 쓰는 헬퍼 */
   addPage(name: string): MockNode;
+  /** figma.currentPage.selection에 값이 대입된 횟수. batch 흐름이 selection을 건드리지 않는지 확인할 때 쓴다. */
+  selectionSetCount: number;
 }
 
 /**
  * `globalThis.figma`를 모의 구현으로 교체한다. 반환값의 root/currentPage/addPage로
  * 테스트 fixture(mockTemplate.ts 등)를 조립한 뒤, renderer.ts/assetResolver.ts를 그대로 호출한다.
  */
+/** node.parent 체인을 타고 올라가 소속 PAGE를 찾는다. 어느 페이지에도 속하지 않으면 null. */
+function findOwningPage(node: MockNode): MockNode | null {
+  let n: MockNode | null = node;
+  while (n) {
+    if (n.type === 'PAGE') return n;
+    n = n.parent;
+  }
+  return null;
+}
+
 export function installMockFigma(): MockFigmaHandle {
   const root = new MockNode('PAGE', '(document root)');
   const currentPage = new MockNode('PAGE', 'Page 1');
   root.appendChild(currentPage);
 
   let selection: MockNode[] = [];
+  let selectionSetCount = 0;
   const notified: string[] = [];
 
   const mockFigma = {
@@ -133,6 +146,13 @@ export function installMockFigma(): MockFigmaHandle {
           return selection;
         },
         set selection(nodes: MockNode[]) {
+          selectionSetCount++;
+          // 실제 Figma와 동일하게, 다른 페이지에 속한 노드를 selection에 넣으면 즉시 실패한다.
+          for (const node of nodes) {
+            if (findOwningPage(node) !== currentPage) {
+              throw new Error('in set_selection: The selection of a page can only include nodes in that page');
+            }
+          }
           selection = nodes;
         },
       };
@@ -172,6 +192,9 @@ export function installMockFigma(): MockFigmaHandle {
       const page = new MockNode('PAGE', name);
       root.appendChild(page);
       return page;
+    },
+    get selectionSetCount() {
+      return selectionSetCount;
     },
   };
 }

@@ -208,10 +208,57 @@ async function testNotRenderableSkipsEvenWithOptionOn() {
   }
 }
 
+async function testBatchRenderNeverTouchesSelection() {
+  // 회귀 테스트: verified(→AUTO_GENERATED_VERIFIED)와 generated(→AUTO_GENERATED_REVIEW) 결과가
+  // 같은 renderBatch 호출 안에서 서로 다른 페이지로 이동한다. 이전에는 renderPlan/
+  // renderGeneratedPlan이 매 항목마다 figma.currentPage.selection을 그 항목의 clone으로
+  // 바꿨는데, 그 clone이 나중에 다른 페이지로 옮겨지면서 실제 Figma에서 "The selection of a
+  // page can only include nodes in that page" 오류가 발생했다. 고친 뒤에는 batch 흐름에서
+  // renderPlan/renderGeneratedPlan을 항상 { select: false }로 호출하므로, renderBatch 도중
+  // selection setter가 단 한 번도 호출되지 않아야 한다 — 그 자체가 회귀 방지 증거다.
+  const handle = installMockFigma();
+  try {
+    seedMockTemplate(handle);
+    seedMockGeneratedShell(handle);
+    const products = mockProducts();
+    const beef = products[0].id;
+
+    const batch = makeBatch([
+      mockWorkOrder('WO-100', [{ productId: beef, quantity: 3 }]), // verified
+      mockWorkOrder('WO-101', [{ productId: beef, quantity: 2 }]), // generated
+    ]);
+
+    const result = await renderBatch(
+      batch,
+      { products, channelPresets: [MOCK_CHANNEL_PRESET], layouts: [MOCK_LAYOUT_VERIFIED_3] },
+      { includeReviewRequired: true },
+      { bindings: [MOCK_TEMPLATE_BINDING], generatedSupport: [MOCK_GENERATED_SUPPORT] },
+    );
+
+    assert.equal(result.summary.generatedCount, 2, 'verified 1건 + generated 1건 모두 생성되어야 함');
+    assert.equal(result.summary.failedCount, 0);
+    assert.equal(
+      handle.selectionSetCount,
+      0,
+      'batch render 도중에는 selection을 전혀 건드리지 않아야 함(서로 다른 페이지로 이동하는 clone을 선택했다가 남겨두면 안 됨)',
+    );
+
+    const verifiedPage = handle.root.children.find((p) => p.name === AUTO_GENERATED_VERIFIED_PAGE_NAME)!;
+    const reviewPage = handle.root.children.find((p) => p.name === AUTO_GENERATED_REVIEW_PAGE_NAME)!;
+    assert.equal(verifiedPage.children.length, 1);
+    assert.equal(reviewPage.children.length, 1);
+
+    console.log('  ✓ verified+generated가 같은 배치에서 서로 다른 페이지로 이동해도 selection을 전혀 건드리지 않고 완료됨');
+  } finally {
+    uninstallMockFigma();
+  }
+}
+
 async function main() {
   await testDefaultSkipsReviewRequiredAndError();
   await testIncludeReviewRequiredRendersSupportedGenerated();
   await testNotRenderableSkipsEvenWithOptionOn();
+  await testBatchRenderNeverTouchesSelection();
   console.log('batchRenderer.test.ts: 모든 검증 통과');
 }
 

@@ -17,7 +17,11 @@ import {
   type BatchPreviewStatus,
 } from '@thumbnail-generator/core/import';
 import { checkRenderability } from '../renderPreflight';
-import type { BatchRenderResult } from '../batchRenderer';
+import {
+  AUTO_GENERATED_VERIFIED_PAGE_NAME,
+  AUTO_GENERATED_REVIEW_PAGE_NAME,
+  type BatchRenderResult,
+} from '../batchRenderer';
 import { selectExportableOutputs, buildExportItems, buildZipFileName } from '../exportNaming';
 
 /**
@@ -230,6 +234,17 @@ export function BatchPreview() {
 
   const generatedCount = selectExportableOutputs(renderResult).length;
 
+  // 실제로 결과가 생긴 페이지만 알려준다(예: verified만 생성됐으면 AUTO_GENERATED_REVIEW는
+  // 언급하지 않음). 페이지 이동은 batchRenderer.ts가 하고, 여기서는 완료 메시지만 만든다 —
+  // 배치 완료 후 selection은 하지 않는다(서로 다른 페이지 노드를 한 번에 selection할 수 없음).
+  const generatedPages = Array.from(
+    new Set(
+      (renderResult?.outputs ?? [])
+        .filter((o) => o.outcome === 'generated')
+        .map((o) => (o.source === 'verified' ? AUTO_GENERATED_VERIFIED_PAGE_NAME : AUTO_GENERATED_REVIEW_PAGE_NAME)),
+    ),
+  );
+
   // 필터는 작업ID(row) 단위 요약 상태(overallStatus) 기준 — 개별 output의 상태는
   // 항상 각 output 줄에 그대로 표시된다(요약이 개별 상태를 덮어쓰지 않는다).
   const visibleRows: BatchPreviewRow[] =
@@ -339,12 +354,17 @@ export function BatchPreview() {
               </p>
 
               {generatedCount > 0 && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '0 0 8px 0' }}>
-                  <span style={{ fontWeight: 600 }}>{generatedCount}개 생성 완료</span>
-                  <button onClick={onExportBatch} disabled={exporting}>
-                    {exporting ? '내보내는 중…' : 'JPEG 일괄 저장'}
-                  </button>
-                </div>
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '0 0 4px 0' }}>
+                    <span style={{ fontWeight: 600 }}>{generatedCount}개 생성 완료</span>
+                    <button onClick={onExportBatch} disabled={exporting}>
+                      {exporting ? '내보내는 중…' : 'JPEG 일괄 저장'}
+                    </button>
+                  </div>
+                  <p style={{ margin: '0 0 8px 0', fontSize: 11, color: '#666' }}>
+                    생성된 페이지: {generatedPages.join(', ')}
+                  </p>
+                </>
               )}
 
               {exportNotice && <p style={{ margin: '0 0 8px 0', fontSize: 12, color: '#1e8e3e' }}>{exportNotice}</p>}
