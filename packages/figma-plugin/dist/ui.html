@@ -50626,87 +50626,800 @@
   var import_react = __toESM(require_react());
   var import_jszip = __toESM(require_jszip_min());
 
-  // ../core/src/import/xlsxReader.ts
-  var import_exceljs = __toESM(require_exceljs_min());
-  var COLUMN_HEADERS = {
-    workId: "\uC791\uC5C5ID",
-    seq: "\uC21C\uBC88",
-    productGroup: "\uC0C1\uD488\uAD70",
-    channel: "\uCC44\uB110",
-    productName: "\uC0C1\uD488\uBA85",
-    productCode: "\uC0C1\uD488\uCF54\uB4DC(\uC790\uB3D9\uC785\uB825)",
-    quantity: "\uC218\uB7C9",
-    badge: "\uB531\uC9C0\uC5EC\uBD80",
-    note: "\uBE44\uACE0"
-  };
-  function toRawValue(value) {
-    if (value === null || value === void 0) return null;
-    if (typeof value === "number" || typeof value === "string") return value;
-    if (value instanceof Date) return value.toISOString();
-    if (typeof value === "object") {
-      if ("richText" in value) return value.richText.map((t) => t.text).join("");
-      if ("result" in value) {
-        const result = value.result;
-        return typeof result === "number" || typeof result === "string" ? result : null;
-      }
-      if ("text" in value) return String(value.text);
+  // ../core/src/domain/productAsset.ts
+  var DEFAULT_PRODUCT_ASSET_KIND = "package";
+
+  // ../core/src/domain/thumbnailType.ts
+  var DEFAULT_THUMBNAIL_TYPE = "basic";
+
+  // ../core/src/domain/layout.ts
+  function getSaleSlotCount(layout) {
+    return layout.slots.filter((s) => s.role !== "gift").length;
+  }
+  function getGiftSlotCount(layout) {
+    return layout.slots.filter((s) => s.role === "gift").length;
+  }
+
+  // ../core/src/engine/selectLayout.ts
+  function selectLayout(criteria, layouts) {
+    const slotCountMatches = layouts.filter(
+      (l) => getSaleSlotCount(l) === criteria.totalQuantity && getGiftSlotCount(l) === criteria.giftQuantity
+    );
+    if (slotCountMatches.length === 0) {
+      return {
+        ok: false,
+        reason: "NO_LAYOUT_WITH_MATCHING_SLOT_COUNT",
+        message: `\uD310\uB9E4\uC218\uB7C9 ${criteria.totalQuantity}\uAC1C` + (criteria.giftQuantity > 0 ? ` + \uC99D\uC815 ${criteria.giftQuantity}\uAC1C` : "") + `\uC640 \uC2AC\uB86F \uC218\uAC00 \uC815\uD655\uD788 \uC77C\uCE58\uD558\uB294 Layout\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. (\uCD95\uC18C\xB7\uC0DD\uB7B5\xB7\uC21C\uD658\uBC30\uCE58 \uB4F1\uC758 \uB300\uCCB4 \uCC98\uB9AC\uB294 \uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4)`,
+        criteria
+      };
     }
-    return String(value);
-  }
-  function toNumberOrNull(value) {
-    const raw = toRawValue(value);
-    if (raw === null || raw === "") return null;
-    const n = Number(raw);
-    return Number.isFinite(n) ? n : null;
-  }
-  function findHeaderColumns(worksheet) {
-    const headerRow = worksheet.getRow(1);
-    const found = {};
-    headerRow.eachCell({ includeEmpty: false }, (cell, colNumber) => {
-      const raw = toRawValue(cell.value);
-      const label = raw === null ? "" : String(raw).trim();
-      for (const [key, headerLabel] of Object.entries(COLUMN_HEADERS)) {
-        if (label === headerLabel) found[key] = colNumber;
-      }
+    const criteriaMatches = slotCountMatches.filter((l) => {
+      const m = l.match;
+      if (m.productGroups && !m.productGroups.includes(criteria.productGroup)) return false;
+      if (m.compositions && !m.compositions.includes(criteria.composition)) return false;
+      if (m.aspectRatioFamilies && !m.aspectRatioFamilies.includes(criteria.aspectRatioFamily)) return false;
+      if (m.geometryFamilies && !m.geometryFamilies.includes(criteria.geometryFamily)) return false;
+      if (m.channelIds && !m.channelIds.includes(criteria.channelId)) return false;
+      if (m.thumbnailTypes && !m.thumbnailTypes.includes(criteria.thumbnailType)) return false;
+      return true;
     });
-    const missing = Object.keys(COLUMN_HEADERS).filter((k) => found[k] === void 0);
-    if (missing.length > 0) {
-      throw new Error(`\uD5E4\uB354\uC5D0\uC11C \uB2E4\uC74C \uCEEC\uB7FC\uC744 \uCC3E\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4: ${missing.map((k) => COLUMN_HEADERS[k]).join(", ")}`);
+    if (criteriaMatches.length === 0) {
+      return {
+        ok: false,
+        reason: "NO_MATCHING_LAYOUT",
+        message: "\uC2AC\uB86F \uC218\uB294 \uC77C\uCE58\uD558\uC9C0\uB9CC productGroup/\uAD6C\uC131/aspectRatio/\uCC44\uB110/\uC378\uB124\uC77C\uC720\uD615 \uC870\uAC74\uC744 \uB9CC\uC871\uD558\uB294 Layout\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.",
+        criteria
+      };
     }
-    return found;
+    const maxPriority = Math.max(...criteriaMatches.map((l) => l.priority));
+    const topLayouts = criteriaMatches.filter((l) => l.priority === maxPriority);
+    if (topLayouts.length > 1) {
+      return {
+        ok: false,
+        reason: "AMBIGUOUS_LAYOUT_MATCH",
+        message: `\uB3D9\uC77C\uD55C \uC6B0\uC120\uC21C\uC704(${maxPriority})\uB97C \uAC00\uC9C4 Layout\uC774 \uC5EC\uB7EC \uAC1C \uC788\uC5B4 \uC790\uB3D9\uC73C\uB85C \uACB0\uC815\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`,
+        candidates: topLayouts.map((l) => l.layoutKey),
+        criteria
+      };
+    }
+    return { ok: true, layout: topLayouts[0] };
   }
-  async function readWorkOrderSheet(fileBytes, sheetName = "01_\uC791\uC5C5\uC694\uCCAD") {
-    var _a, _b, _c;
-    const workbook = new import_exceljs.default.Workbook();
-    await workbook.xlsx.load(fileBytes);
-    const worksheet = workbook.getWorksheet(sheetName);
-    if (!worksheet) {
-      throw new Error(`\uC2DC\uD2B8 "${sheetName}"\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`);
-    }
-    const col = findHeaderColumns(worksheet);
-    const rows = [];
-    for (let r = 2; r <= worksheet.rowCount; r++) {
-      const workId = toRawValue(worksheet.getCell(r, col.workId).value);
-      const productName = toRawValue(worksheet.getCell(r, col.productName).value);
-      const productCode = toRawValue(worksheet.getCell(r, col.productCode).value);
-      const note = toRawValue(worksheet.getCell(r, col.note).value);
-      const isBlankRow = (workId === null || workId === "") && (productName === null || productName === "") && (productCode === null || productCode === "") && (note === null || note === "");
-      if (isBlankRow) continue;
-      rows.push({
-        rowIndex: r,
-        workId: String(workId != null ? workId : "").trim(),
-        seq: toNumberOrNull(worksheet.getCell(r, col.seq).value),
-        productGroup: String((_a = toRawValue(worksheet.getCell(r, col.productGroup).value)) != null ? _a : "").trim(),
-        channel: String((_b = toRawValue(worksheet.getCell(r, col.channel).value)) != null ? _b : "").trim(),
-        productName: String(productName != null ? productName : "").trim(),
-        productCode: String(productCode != null ? productCode : "").trim(),
-        quantity: toNumberOrNull(worksheet.getCell(r, col.quantity).value),
-        badgeRaw: (_c = toRawValue(worksheet.getCell(r, col.badge).value)) != null ? _c : null,
-        note: note === null || note === "" ? null : String(note).trim()
-      });
-    }
-    return rows;
+
+  // ../core/src/engine/assignSlots.ts
+  function slotOrderKey(slotKey) {
+    const match = slotKey.match(/(\d+)\s*$/);
+    return match ? Number(match[1]) : Number.POSITIVE_INFINITY;
   }
+  function sortBySlotOrder(slots) {
+    return [...slots].sort((a, b) => slotOrderKey(a.slotKey) - slotOrderKey(b.slotKey));
+  }
+  function saleSlotsOf(layout) {
+    return sortBySlotOrder(layout.slots.filter((s) => s.role !== "gift"));
+  }
+  function giftSlotsOf(layout) {
+    return sortBySlotOrder(layout.slots.filter((s) => s.role === "gift"));
+  }
+  function fillSlots(slots, assetKeys) {
+    return slots.map((slot, i) => ({ slotKey: slot.slotKey, assetKey: assetKeys[i], role: slot.role }));
+  }
+  function assignSlots(input) {
+    const saleSlots = saleSlotsOf(input.layout);
+    const giftSlots = giftSlotsOf(input.layout);
+    if (saleSlots.length !== input.saleAssetKeys.length) {
+      return {
+        ok: false,
+        reason: "SALE_SLOT_COUNT_MISMATCH",
+        message: `Layout "${input.layout.layoutKey}"\uC758 \uD310\uB9E4 \uC2AC\uB86F \uC218(${saleSlots.length})\uC640 \uC2E4\uC81C \uD310\uB9E4 \uC0C1\uD488 \uC218(${input.saleAssetKeys.length})\uAC00 \uC815\uD655\uD788 \uC77C\uCE58\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. (\uC77C\uBD80\uB9CC \uCC44\uC6B0\uAC70\uB098 \uACB9\uCCD0 \uB123\uB294 \uB4F1\uC758 \uB300\uCCB4 \uCC98\uB9AC\uB294 \uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4)`
+      };
+    }
+    if (giftSlots.length !== input.giftAssetKeys.length) {
+      return {
+        ok: false,
+        reason: "GIFT_SLOT_COUNT_MISMATCH",
+        message: `Layout "${input.layout.layoutKey}"\uC758 \uC99D\uC815 \uC2AC\uB86F \uC218(${giftSlots.length})\uC640 \uC2E4\uC81C \uC99D\uC815 \uC0C1\uD488 \uC218(${input.giftAssetKeys.length})\uAC00 \uC815\uD655\uD788 \uC77C\uCE58\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.`
+      };
+    }
+    return {
+      ok: true,
+      slots: [...fillSlots(saleSlots, input.saleAssetKeys), ...fillSlots(giftSlots, input.giftAssetKeys)]
+    };
+  }
+
+  // ../core/src/data/arrangementFamilyPolicy.ts
+  var MAX_GENERATED_SLOT_COUNT = 20;
+  var ARRANGEMENT_FAMILY_POLICY = [
+    { familyId: "single-center", minSlotCount: 1, maxSlotCount: 1 },
+    { familyId: "row-linear", minSlotCount: 2, maxSlotCount: 3 },
+    { familyId: "diagonal-cascade", minSlotCount: 4, maxSlotCount: 5 },
+    { familyId: "pyramid-stack", minSlotCount: 6, maxSlotCount: 10 },
+    { familyId: "grid-cluster", minSlotCount: 11, maxSlotCount: MAX_GENERATED_SLOT_COUNT }
+  ];
+  function resolveArrangementFamily(slotCount) {
+    return ARRANGEMENT_FAMILY_POLICY.find(
+      (r) => slotCount >= r.minSlotCount && slotCount <= r.maxSlotCount
+    );
+  }
+
+  // ../core/src/engine/generateFallbackLayout.ts
+  function generateFallbackLayout(input) {
+    if (input.slotCount > MAX_GENERATED_SLOT_COUNT) {
+      return {
+        ok: false,
+        reason: "SLOT_COUNT_EXCEEDS_GENERATED_LIMIT",
+        message: `\uC2AC\uB86F \uC218 ${input.slotCount}\uAC1C\uB294 generated fallback\uC758 V1 \uCD5C\uB300\uCE58(${MAX_GENERATED_SLOT_COUNT}\uAC1C)\uB97C \uCD08\uACFC\uD569\uB2C8\uB2E4.`
+      };
+    }
+    const range = resolveArrangementFamily(input.slotCount);
+    if (!range) {
+      return {
+        ok: false,
+        reason: "NO_ARRANGEMENT_FAMILY_FOR_SLOT_COUNT",
+        message: `\uC2AC\uB86F \uC218 ${input.slotCount}\uAC1C\uC5D0 \uB300\uC751\uD558\uB294 \uBC30\uCE58 family\uAC00 \uC815\uCC45 \uB370\uC774\uD130(arrangementFamilyPolicy)\uC5D0 \uC815\uC758\uB418\uC5B4 \uC788\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.`
+      };
+    }
+    const slots = Array.from({ length: input.slotCount }, (_, i) => ({
+      slotKey: `slot_${i + 1}`,
+      role: "sale"
+    }));
+    return {
+      ok: true,
+      layout: {
+        layoutKey: `GENERATED_${range.familyId.toUpperCase()}_${input.slotCount}`,
+        arrangementKind: range.familyId,
+        slots,
+        // generated layout은 selectLayout으로 검색되지 않고 resolveLayout이 직접 생성해서
+        // 반환하므로 match 조건이 필요 없다.
+        match: {},
+        priority: 0,
+        source: { kind: "generated", params: { familyId: range.familyId, slotCount: input.slotCount } }
+      }
+    };
+  }
+
+  // ../core/src/engine/resolveLayout.ts
+  function resolveLayout(criteria, layouts) {
+    const verifiedLayouts = layouts.filter((l) => l.source.kind === "verified");
+    const selection = selectLayout(criteria, verifiedLayouts);
+    if (selection.ok) {
+      return { status: "resolved", layout: selection.layout };
+    }
+    if (selection.reason === "AMBIGUOUS_LAYOUT_MATCH") {
+      return { status: "error", reason: "AMBIGUOUS_LAYOUT_MATCH", message: selection.message };
+    }
+    if (criteria.giftQuantity > 0) {
+      return {
+        status: "reviewRequired",
+        reason: "GIFT_NO_VERIFIED_LAYOUT",
+        message: "\uC99D\uC815\uD488\uC774 \uD3EC\uD568\uB41C \uC694\uCCAD\uC740 \uAC80\uC99D\uB41C(verified) Layout\uC774 \uC788\uC744 \uB54C\uB9CC \uC790\uB3D9 \uC0DD\uC131\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4. \uD574\uB2F9 \uC2AC\uB86F \uAD6C\uC131\uC758 \uAC80\uC99D\uB41C Layout\uC774 \uC5C6\uC5B4 \uAC80\uD1A0\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4."
+      };
+    }
+    if (criteria.thumbnailType === "staged") {
+      return {
+        status: "reviewRequired",
+        reason: "STAGED_NO_VERIFIED_LAYOUT",
+        message: "staged \uC378\uB124\uC77C\uC740 \uAC80\uC99D\uB41C(verified) Layout\uB9CC \uC0AC\uC6A9\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4(\uC790\uB3D9 \uC0DD\uC131 \uAE08\uC9C0). \uD574\uB2F9 \uC2AC\uB86F \uAD6C\uC131\uC758 \uAC80\uC99D\uB41C Layout\uC774 \uC5C6\uC5B4 \uAC80\uD1A0\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4."
+      };
+    }
+    if (criteria.fallbackPolicy === "verified-only") {
+      return {
+        status: "reviewRequired",
+        reason: "VERIFIED_ONLY_NO_VERIFIED_LAYOUT",
+        message: "\uC774 \uCC44\uB110 \uADDC\uACA9\uC740 verified-only \uC815\uCC45\uC774 \uC801\uC6A9\uB418\uC5B4 \uC788\uC5B4(\uCC44\uB110 \uACE0\uC720 \uAD6C\uC870\uB77C generic\uD55C family \uACF5\uC2DD\uC744 \uC801\uC6A9\uD560 \uC218 \uC5C6\uC74C) \uAC80\uC99D\uB41C(verified) Layout\uC774 \uC5C6\uC73C\uBA74 \uC790\uB3D9 \uC0DD\uC131\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uD574\uB2F9 \uC2AC\uB86F \uAD6C\uC131\uC758 \uAC80\uC99D\uB41C Layout\uC774 \uC5C6\uC5B4 \uAC80\uD1A0\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4."
+      };
+    }
+    const fallback = generateFallbackLayout({ slotCount: criteria.totalQuantity });
+    if (!fallback.ok) {
+      return { status: "error", reason: fallback.reason, message: fallback.message };
+    }
+    return { status: "resolved", layout: fallback.layout };
+  }
+
+  // ../core/src/engine/composePlan.ts
+  function expandItems(items) {
+    const out = [];
+    for (const item of items) {
+      for (let i = 0; i < item.quantity; i++) out.push(item.productId);
+    }
+    return out;
+  }
+  function composePlan(request, deps) {
+    var _a, _b, _c, _d, _e, _f;
+    const channelPreset = deps.channelPresets.find((c) => c.id === request.channelPresetId);
+    if (!channelPreset) {
+      return {
+        ok: false,
+        reviewRequired: false,
+        reason: "CHANNEL_PRESET_NOT_FOUND",
+        message: `channelPresetId "${request.channelPresetId}"\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`
+      };
+    }
+    if (request.items.length === 0) {
+      return {
+        ok: false,
+        reviewRequired: false,
+        reason: "EMPTY_ITEMS",
+        message: "\uD310\uB9E4 \uC0C1\uD488 \uD56D\uBAA9(items)\uC774 \uBE44\uC5B4 \uC788\uC2B5\uB2C8\uB2E4."
+      };
+    }
+    const saleProductIds = expandItems(request.items);
+    const giftProductIds = expandItems((_a = request.giftItems) != null ? _a : []);
+    const productLookup = new Map(deps.products.map((p) => [p.id, p]));
+    for (const id of [...saleProductIds, ...giftProductIds]) {
+      if (!productLookup.has(id)) {
+        return {
+          ok: false,
+          reviewRequired: false,
+          reason: "PRODUCT_NOT_FOUND",
+          message: `productId "${id}"\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`
+        };
+      }
+    }
+    const groups = new Set(
+      [...saleProductIds, ...giftProductIds].map((id) => productLookup.get(id).productGroup)
+    );
+    if (groups.size > 1) {
+      return {
+        ok: false,
+        reviewRequired: false,
+        reason: "INCONSISTENT_PRODUCT_GROUP",
+        message: `\uC694\uCCAD\uC5D0 \uC11C\uB85C \uB2E4\uB978 productGroup\uC774 \uC11E\uC5EC \uC788\uC2B5\uB2C8\uB2E4: ${[...groups].join(", ")}`
+      };
+    }
+    const productGroup = [...groups][0];
+    const composition = new Set(request.items.map((i) => i.productId)).size > 1 ? "mixed" : "single";
+    const thumbnailType = (_b = request.thumbnailType) != null ? _b : DEFAULT_THUMBNAIL_TYPE;
+    const resolution = resolveLayout(
+      {
+        productGroup,
+        composition,
+        totalQuantity: saleProductIds.length,
+        giftQuantity: giftProductIds.length,
+        channelId: channelPreset.channelId,
+        aspectRatioFamily: channelPreset.aspectRatioFamily,
+        geometryFamily: channelPreset.geometryFamily,
+        thumbnailType,
+        fallbackPolicy: channelPreset.fallbackPolicy
+      },
+      deps.layouts
+    );
+    if (resolution.status === "error") {
+      return { ok: false, reviewRequired: false, reason: resolution.reason, message: resolution.message };
+    }
+    if (resolution.status === "reviewRequired") {
+      return { ok: false, reviewRequired: true, reason: resolution.reason, message: resolution.message };
+    }
+    const layout = resolution.layout;
+    const assignment = assignSlots({
+      layout,
+      saleAssetKeys: saleProductIds.map((id) => productLookup.get(id).assetKey),
+      giftAssetKeys: giftProductIds.map((id) => productLookup.get(id).assetKey)
+    });
+    if (!assignment.ok) {
+      return { ok: false, reviewRequired: false, reason: assignment.reason, message: assignment.message };
+    }
+    const generatedLayout = layout.source.kind === "generated";
+    return {
+      ok: true,
+      plan: {
+        layoutKey: layout.layoutKey,
+        channelPresetId: channelPreset.id,
+        productGroup,
+        thumbnailType,
+        slots: assignment.slots,
+        layoutSource: layout.source,
+        generatedLayout,
+        // generated fallback으로 만들어진 plan은 향후 AUTO_GENERATED_REVIEW 같은 별도
+        // 검토 영역으로 보내야 하므로 항상 reviewRequired=true로 표시한다.
+        reviewRequired: generatedLayout,
+        options: {
+          badge: (_c = request.options) == null ? void 0 : _c.badge,
+          storageLabel: (_d = request.options) == null ? void 0 : _d.storageLabel,
+          logoVariant: (_f = (_e = request.options) == null ? void 0 : _e.logoVariant) != null ? _f : "red"
+        }
+      }
+    };
+  }
+
+  // ../core/src/engine/composeChannelOutputs.ts
+  function composeChannelOutputs(request, deps) {
+    const _a = request, { channelId } = _a, requestWithoutChannel = __objRest(_a, ["channelId"]);
+    const presets = deps.channelPresets.filter((p) => p.channelId === channelId);
+    if (presets.length === 0) {
+      return {
+        ok: false,
+        reason: "CHANNEL_NOT_FOUND",
+        message: `channelId "${channelId}"\uC5D0 \uB4F1\uB85D\uB41C ChannelPreset\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.`
+      };
+    }
+    const outputs = presets.map((preset) => ({
+      channelPresetId: preset.id,
+      aspectRatioFamily: preset.aspectRatioFamily,
+      frameWidth: preset.frameWidth,
+      frameHeight: preset.frameHeight,
+      result: composePlan(__spreadProps(__spreadValues({}, requestWithoutChannel), { channelPresetId: preset.id }), deps)
+    }));
+    return { ok: true, outputs };
+  }
+
+  // ../core/src/data/channelPresets.ts
+  var CHANNEL_PRESETS = [
+    // --- 복수 규격 채널 (square + wide) ---
+    {
+      id: "naver-1000x1000",
+      channelId: "naver",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      geometryFamily: "square-1x1",
+      fallbackPolicy: "verified-or-generated",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "kakao-1000x1000",
+      channelId: "kakao",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      geometryFamily: "square-1x1",
+      fallbackPolicy: "verified-or-generated",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      // 750x422 ≈ 1.78:1 — 실제 조사로 홈앤쇼핑/제이슨딜과 동일한 "N개 균일 슬롯 가로 배치"
+      // 구조임을 확인(wide-16x9). 대표: 카카오_750_소고기장조림130_1/3/5 (69:2292/69:2306/69:2322)
+      id: "kakao-750x422",
+      channelId: "kakao",
+      frameWidth: 750,
+      frameHeight: 422,
+      aspectRatioFamily: "wide",
+      geometryFamily: "wide-16x9",
+      fallbackPolicy: "verified-or-generated",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "home-and-shopping-1000x1000",
+      channelId: "home-and-shopping",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      geometryFamily: "square-1x1",
+      fallbackPolicy: "verified-or-generated",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      // 640x350 ≈ 1.83:1 — 카카오/제이슨딜과 동일 구조 확인(3슬롯, 69:1872). wide-16x9.
+      id: "home-and-shopping-640x350",
+      channelId: "home-and-shopping",
+      frameWidth: 640,
+      frameHeight: 350,
+      aspectRatioFamily: "wide",
+      geometryFamily: "wide-16x9",
+      fallbackPolicy: "verified-or-generated",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "toss-1000x1000",
+      channelId: "toss",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      geometryFamily: "square-1x1",
+      fallbackPolicy: "verified-or-generated",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      // 600x240 = 2.5:1 — hero 배경 이미지 + 마스크 아이콘 + N개 소형 슬롯이라는 독특한 구조
+      // (다른 wide처럼 균일 슬롯 가로 배치가 아님, 69:2553/69:2588/69:2601 조사 결과). 다른
+      // wide 규격과 다른 별도 geometryFamily(wide-5x2)로 분리 — verified Layout 미등록.
+      // fallbackPolicy를 'verified-only'로 설정 — 채널 고유 구조라 generic family 공식으로
+      // generated fallback을 만들면 실제 디자인과 전혀 다른 결과가 나오므로, verified Layout이
+      // 없으면 자동 생성하지 않고 reviewRequired로 사람이 수동 처리하게 한다.
+      id: "toss-600x240",
+      channelId: "toss",
+      frameWidth: 600,
+      frameHeight: 240,
+      aspectRatioFamily: "wide",
+      geometryFamily: "wide-5x2",
+      fallbackPolicy: "verified-only",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "jasondeal-1000x1000",
+      channelId: "jasondeal",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      geometryFamily: "square-1x1",
+      fallbackPolicy: "verified-or-generated",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      // 720x400 = 1.8:1 — 카카오/홈앤쇼핑과 동일 구조 확인(3슬롯, 69:1372). wide-16x9.
+      id: "jasondeal-720x400",
+      channelId: "jasondeal",
+      frameWidth: 720,
+      frameHeight: 400,
+      aspectRatioFamily: "wide",
+      geometryFamily: "wide-16x9",
+      fallbackPolicy: "verified-or-generated",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "11st-1000x1000",
+      channelId: "11st",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      geometryFamily: "square-1x1",
+      fallbackPolicy: "verified-or-generated",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      // 720x360 = 2:1 — 균일 슬롯 가로 배치 구조는 wide-16x9와 비슷하지만 비율이 뚜렷이 달라
+      // (2:1 vs ≈1.8:1) 별도 geometryFamily(wide-2x1)로 분리. 다른 채널과 교차 확인은 아직
+      // 안 됐음(현재 wide-2x1은 11번가 하나뿐). 대표: 11번가_720_소고기장조림130_1/3/5
+      // (69:1952/69:1936/69:1966)
+      id: "11st-720x360",
+      channelId: "11st",
+      frameWidth: 720,
+      frameHeight: 360,
+      aspectRatioFamily: "wide",
+      geometryFamily: "wide-2x1",
+      fallbackPolicy: "verified-or-generated",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    // --- 단일 규격(1000x1000) 채널 — 프레임 데이터상 예외 없이 정사각형만 확인됨 ---
+    {
+      id: "ssg-1000x1000",
+      channelId: "ssg",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      geometryFamily: "square-1x1",
+      fallbackPolicy: "verified-or-generated",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "auction-1000x1000",
+      channelId: "auction",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      geometryFamily: "square-1x1",
+      fallbackPolicy: "verified-or-generated",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "gmarket-1000x1000",
+      channelId: "gmarket",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      geometryFamily: "square-1x1",
+      fallbackPolicy: "verified-or-generated",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "sk-stoa-1000x1000",
+      channelId: "sk-stoa",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      geometryFamily: "square-1x1",
+      fallbackPolicy: "verified-or-generated",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "skt-deal-1000x1000",
+      channelId: "skt-deal",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      geometryFamily: "square-1x1",
+      fallbackPolicy: "verified-or-generated",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "coupang-1000x1000",
+      channelId: "coupang",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      geometryFamily: "square-1x1",
+      fallbackPolicy: "verified-or-generated",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "aliexpress-1000x1000",
+      channelId: "aliexpress",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      geometryFamily: "square-1x1",
+      fallbackPolicy: "verified-or-generated",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "ns-shopping-1000x1000",
+      channelId: "ns-shopping",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      geometryFamily: "square-1x1",
+      fallbackPolicy: "verified-or-generated",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      // 표본 2개(반례 없음, 신뢰도 낮음) — 추가 확인 전까지는 사용에 주의
+      id: "alwayz-1000x1000",
+      channelId: "alwayz",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      geometryFamily: "square-1x1",
+      fallbackPolicy: "verified-or-generated",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      // 표본 2개(반례 없음, 신뢰도 낮음) — 추가 확인 전까지는 사용에 주의
+      id: "eland-mall-1000x1000",
+      channelId: "eland-mall",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      geometryFamily: "square-1x1",
+      fallbackPolicy: "verified-or-generated",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      // 표본 2개(반례 없음, 신뢰도 낮음) — 추가 확인 전까지는 사용에 주의
+      id: "lotte-on-1000x1000",
+      channelId: "lotte-on",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      geometryFamily: "square-1x1",
+      fallbackPolicy: "verified-or-generated",
+      storageLabelSupported: true,
+      badgeSupported: true
+    }
+  ];
+
+  // ../core/src/data/layouts.ts
+  var LAYOUTS = [
+    {
+      // 대표 Figma frame: 네이버_소고기장조림130_1 (node 69:307) — image 312 슬롯 1개 확인
+      layoutKey: "LAYOUT_01",
+      arrangementKind: "single-center",
+      slots: [{ slotKey: "slot_1", role: "sale" }],
+      match: {
+        productGroups: ["simple-meal"],
+        compositions: ["single", "mixed"],
+        aspectRatioFamilies: ["square"],
+        geometryFamilies: ["square-1x1"],
+        thumbnailTypes: ["basic"]
+      },
+      priority: 100,
+      source: { kind: "verified" }
+    },
+    {
+      // 대표 Figma frame: 네이버_소고기장조림130_3 (node 69:417) — image 313/409/410 대각선 3슬롯 확인
+      layoutKey: "LAYOUT_02",
+      arrangementKind: "triple-cascade",
+      slots: [
+        { slotKey: "slot_1", role: "sale" },
+        { slotKey: "slot_2", role: "sale" },
+        { slotKey: "slot_3", role: "sale" }
+      ],
+      match: {
+        productGroups: ["simple-meal"],
+        compositions: ["single", "mixed"],
+        aspectRatioFamilies: ["square"],
+        geometryFamilies: ["square-1x1"],
+        thumbnailTypes: ["basic"]
+      },
+      priority: 100,
+      source: { kind: "verified" }
+    },
+    {
+      // 대표 Figma frame: 네이버_소고기장조림130_5 (node 69:442) — 상단 3 + 하단 2 피라미드 배치, 5슬롯 확인
+      layoutKey: "LAYOUT_03",
+      arrangementKind: "penta-pyramid",
+      slots: [
+        { slotKey: "slot_1", role: "sale" },
+        { slotKey: "slot_2", role: "sale" },
+        { slotKey: "slot_3", role: "sale" },
+        { slotKey: "slot_4", role: "sale" },
+        { slotKey: "slot_5", role: "sale" }
+      ],
+      match: {
+        productGroups: ["simple-meal"],
+        compositions: ["single", "mixed"],
+        aspectRatioFamilies: ["square"],
+        geometryFamilies: ["square-1x1"],
+        thumbnailTypes: ["basic"]
+      },
+      priority: 100,
+      source: { kind: "verified" }
+    },
+    {
+      // 대표 Figma frame: 네이버_소고기장조림130_10 (node 69:353) — 중앙 대형 1개(node 69:373,
+      // "image 321", 549x549) + 주변 소형 9개(node 69:364~69:372, 각 343~344px 균일 크기)로
+      // 구성된 main/sub 비대칭 클러스터. 실제 레이어 이름에는 "main"/"sub" 표기가 없어서(전부
+      // "image NNN") slot 자체의 role로 명시한다(LayoutSlotRole = 'sale'|'gift'|'main'|'sub',
+      // main/sub는 'sale'의 세부 구분 — getSaleSlotCount/assignSlots는 role!=='gift'를 판매
+      // 슬롯으로 취급하므로 10개 전부 정상적으로 판매 슬롯 수에 포함된다).
+      // V1 정책: assignSlots는 slot_1부터 순서대로 채우므로, Excel 순번이 가장 빠른 상품이
+      // slot_1(main, 중앙 대형)에 배정된다. 실제 Figma 바인딩(templateMapper, 아직 미연결)을
+      // 붙일 때 slot_1은 반드시 node 69:373("image 321")에, slot_2~10은 나머지 9개 소형
+      // 슬롯에 매핑해야 한다.
+      layoutKey: "LAYOUT_04",
+      arrangementKind: "grid-cluster-10",
+      slots: [
+        { slotKey: "slot_1", role: "main" },
+        // 중앙 대형(549x549) — node 69:373 "image 321"
+        { slotKey: "slot_2", role: "sub" },
+        { slotKey: "slot_3", role: "sub" },
+        { slotKey: "slot_4", role: "sub" },
+        { slotKey: "slot_5", role: "sub" },
+        { slotKey: "slot_6", role: "sub" },
+        { slotKey: "slot_7", role: "sub" },
+        { slotKey: "slot_8", role: "sub" },
+        { slotKey: "slot_9", role: "sub" },
+        { slotKey: "slot_10", role: "sub" }
+      ],
+      match: {
+        productGroups: ["simple-meal"],
+        compositions: ["single", "mixed"],
+        aspectRatioFamilies: ["square"],
+        geometryFamilies: ["square-1x1"],
+        thumbnailTypes: ["basic"]
+      },
+      priority: 100,
+      source: { kind: "verified" }
+    },
+    // --- wide-16x9 (카카오 750x422 / 홈앤쇼핑 640x350 / 제이슨딜 720x400 공유) ---
+    // 세 채널 모두 "N개 균일 크기 슬롯을 가로로 나란히 배치"하는 동일 구조임을 실제
+    // screenshot+node 구조로 확인했다(카카오 1/3/5 직접 확인, 홈앤쇼핑/제이슨딜은 3슬롯으로
+    // 교차 확인) — main/sub 구분 없음. channelIds를 지정하지 않아 세 채널 모두에서 재사용된다.
+    {
+      // 대표 frame: 카카오_750_소고기장조림130_1 (node 69:2292) — image 418 슬롯 1개
+      layoutKey: "LAYOUT_05",
+      arrangementKind: "single-center",
+      slots: [{ slotKey: "slot_1", role: "sale" }],
+      match: {
+        productGroups: ["simple-meal"],
+        compositions: ["single", "mixed"],
+        aspectRatioFamilies: ["wide"],
+        geometryFamilies: ["wide-16x9"],
+        thumbnailTypes: ["basic"]
+      },
+      priority: 100,
+      source: { kind: "verified" }
+    },
+    {
+      // 대표 frame: 카카오_750_소고기장조림130_3 (node 69:2306). 교차 확인:
+      // 홈앤쇼핑_640_소고기장조림130_3(69:1872), 제이슨딜_720x400_소고기장조림130_3팩(69:1372)
+      // — 세 채널 모두 균일 3슬롯 가로 배치.
+      layoutKey: "LAYOUT_06",
+      arrangementKind: "triple-row",
+      slots: [
+        { slotKey: "slot_1", role: "sale" },
+        { slotKey: "slot_2", role: "sale" },
+        { slotKey: "slot_3", role: "sale" }
+      ],
+      match: {
+        productGroups: ["simple-meal"],
+        compositions: ["single", "mixed"],
+        aspectRatioFamilies: ["wide"],
+        geometryFamilies: ["wide-16x9"],
+        thumbnailTypes: ["basic"]
+      },
+      priority: 100,
+      source: { kind: "verified" }
+    },
+    {
+      // 대표 frame: 카카오_750_소고기장조림130_5 (node 69:2322) — image 418~422 균일 5슬롯 가로 배치
+      layoutKey: "LAYOUT_07",
+      arrangementKind: "penta-row",
+      slots: [
+        { slotKey: "slot_1", role: "sale" },
+        { slotKey: "slot_2", role: "sale" },
+        { slotKey: "slot_3", role: "sale" },
+        { slotKey: "slot_4", role: "sale" },
+        { slotKey: "slot_5", role: "sale" }
+      ],
+      match: {
+        productGroups: ["simple-meal"],
+        compositions: ["single", "mixed"],
+        aspectRatioFamilies: ["wide"],
+        geometryFamilies: ["wide-16x9"],
+        thumbnailTypes: ["basic"]
+      },
+      priority: 100,
+      source: { kind: "verified" }
+    },
+    // --- wide-2x1 (11번가 720x360) ---
+    // wide-16x9와 배치 스타일(균일 슬롯 가로열)은 비슷하지만 실제 비율이 뚜렷이 달라(2:1 vs
+    // ≈1.8:1) 별도 geometryFamily로 분리했다. 현재 wide-2x1 채널은 11번가 하나뿐이라 다른
+    // 채널과의 교차 재사용은 아직 확인되지 않았다.
+    {
+      // 대표 frame: 11번가_720_소고기장조림130_1 (node 69:1952)
+      layoutKey: "LAYOUT_08",
+      arrangementKind: "single-center",
+      slots: [{ slotKey: "slot_1", role: "sale" }],
+      match: {
+        productGroups: ["simple-meal"],
+        compositions: ["single", "mixed"],
+        aspectRatioFamilies: ["wide"],
+        geometryFamilies: ["wide-2x1"],
+        thumbnailTypes: ["basic"]
+      },
+      priority: 100,
+      source: { kind: "verified" }
+    },
+    {
+      // 대표 frame: 11번가_720_소고기장조림130_3 (node 69:1936) — image 412/413/414 균일 3슬롯
+      layoutKey: "LAYOUT_09",
+      arrangementKind: "triple-row",
+      slots: [
+        { slotKey: "slot_1", role: "sale" },
+        { slotKey: "slot_2", role: "sale" },
+        { slotKey: "slot_3", role: "sale" }
+      ],
+      match: {
+        productGroups: ["simple-meal"],
+        compositions: ["single", "mixed"],
+        aspectRatioFamilies: ["wide"],
+        geometryFamilies: ["wide-2x1"],
+        thumbnailTypes: ["basic"]
+      },
+      priority: 100,
+      source: { kind: "verified" }
+    },
+    {
+      // 대표 frame: 11번가_720_소고기장조림130_5 (node 69:1966) — image 412~416 균일 5슬롯
+      layoutKey: "LAYOUT_10",
+      arrangementKind: "penta-row",
+      slots: [
+        { slotKey: "slot_1", role: "sale" },
+        { slotKey: "slot_2", role: "sale" },
+        { slotKey: "slot_3", role: "sale" },
+        { slotKey: "slot_4", role: "sale" },
+        { slotKey: "slot_5", role: "sale" }
+      ],
+      match: {
+        productGroups: ["simple-meal"],
+        compositions: ["single", "mixed"],
+        aspectRatioFamilies: ["wide"],
+        geometryFamilies: ["wide-2x1"],
+        thumbnailTypes: ["basic"]
+      },
+      priority: 100,
+      source: { kind: "verified" }
+    }
+  ];
 
   // ../core/src/data/channels.ts
   var CHANNELS = [
@@ -50730,9 +51443,6 @@
     { id: "toss", label: "\uD1A0\uC2A4" },
     { id: "jasondeal", label: "\uC81C\uC774\uC2A8\uB51C" }
   ];
-
-  // ../core/src/domain/productAsset.ts
-  var DEFAULT_PRODUCT_ASSET_KIND = "package";
 
   // ../core/src/data/productAssetBindings.ts
   var PRODUCT_ASSET_BINDINGS = [
@@ -51230,6 +51940,88 @@
     (p) => p !== null
   );
 
+  // ../core/src/import/xlsxReader.ts
+  var import_exceljs = __toESM(require_exceljs_min());
+  var COLUMN_HEADERS = {
+    workId: "\uC791\uC5C5ID",
+    seq: "\uC21C\uBC88",
+    productGroup: "\uC0C1\uD488\uAD70",
+    channel: "\uCC44\uB110",
+    productName: "\uC0C1\uD488\uBA85",
+    productCode: "\uC0C1\uD488\uCF54\uB4DC(\uC790\uB3D9\uC785\uB825)",
+    quantity: "\uC218\uB7C9",
+    badge: "\uB531\uC9C0\uC5EC\uBD80",
+    note: "\uBE44\uACE0"
+  };
+  function toRawValue(value) {
+    if (value === null || value === void 0) return null;
+    if (typeof value === "number" || typeof value === "string") return value;
+    if (value instanceof Date) return value.toISOString();
+    if (typeof value === "object") {
+      if ("richText" in value) return value.richText.map((t) => t.text).join("");
+      if ("result" in value) {
+        const result = value.result;
+        return typeof result === "number" || typeof result === "string" ? result : null;
+      }
+      if ("text" in value) return String(value.text);
+    }
+    return String(value);
+  }
+  function toNumberOrNull(value) {
+    const raw = toRawValue(value);
+    if (raw === null || raw === "") return null;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  }
+  function findHeaderColumns(worksheet) {
+    const headerRow = worksheet.getRow(1);
+    const found = {};
+    headerRow.eachCell({ includeEmpty: false }, (cell, colNumber) => {
+      const raw = toRawValue(cell.value);
+      const label = raw === null ? "" : String(raw).trim();
+      for (const [key, headerLabel] of Object.entries(COLUMN_HEADERS)) {
+        if (label === headerLabel) found[key] = colNumber;
+      }
+    });
+    const missing = Object.keys(COLUMN_HEADERS).filter((k) => found[k] === void 0);
+    if (missing.length > 0) {
+      throw new Error(`\uD5E4\uB354\uC5D0\uC11C \uB2E4\uC74C \uCEEC\uB7FC\uC744 \uCC3E\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4: ${missing.map((k) => COLUMN_HEADERS[k]).join(", ")}`);
+    }
+    return found;
+  }
+  async function readWorkOrderSheet(fileBytes, sheetName = "01_\uC791\uC5C5\uC694\uCCAD") {
+    var _a, _b, _c;
+    const workbook = new import_exceljs.default.Workbook();
+    await workbook.xlsx.load(fileBytes);
+    const worksheet = workbook.getWorksheet(sheetName);
+    if (!worksheet) {
+      throw new Error(`\uC2DC\uD2B8 "${sheetName}"\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`);
+    }
+    const col = findHeaderColumns(worksheet);
+    const rows = [];
+    for (let r = 2; r <= worksheet.rowCount; r++) {
+      const workId = toRawValue(worksheet.getCell(r, col.workId).value);
+      const productName = toRawValue(worksheet.getCell(r, col.productName).value);
+      const productCode = toRawValue(worksheet.getCell(r, col.productCode).value);
+      const note = toRawValue(worksheet.getCell(r, col.note).value);
+      const isBlankRow = (workId === null || workId === "") && (productName === null || productName === "") && (productCode === null || productCode === "") && (note === null || note === "");
+      if (isBlankRow) continue;
+      rows.push({
+        rowIndex: r,
+        workId: String(workId != null ? workId : "").trim(),
+        seq: toNumberOrNull(worksheet.getCell(r, col.seq).value),
+        productGroup: String((_a = toRawValue(worksheet.getCell(r, col.productGroup).value)) != null ? _a : "").trim(),
+        channel: String((_b = toRawValue(worksheet.getCell(r, col.channel).value)) != null ? _b : "").trim(),
+        productName: String(productName != null ? productName : "").trim(),
+        productCode: String(productCode != null ? productCode : "").trim(),
+        quantity: toNumberOrNull(worksheet.getCell(r, col.quantity).value),
+        badgeRaw: (_c = toRawValue(worksheet.getCell(r, col.badge).value)) != null ? _c : null,
+        note: note === null || note === "" ? null : String(note).trim()
+      });
+    }
+    return rows;
+  }
+
   // ../core/src/import/workOrderParser.ts
   var PRODUCT_GROUP_LABELS = {
     \uAC04\uD3B8\uC2DD: "simple-meal",
@@ -51433,798 +52225,6 @@
     };
   }
 
-  // ../core/src/data/channelPresets.ts
-  var CHANNEL_PRESETS = [
-    // --- 복수 규격 채널 (square + wide) ---
-    {
-      id: "naver-1000x1000",
-      channelId: "naver",
-      frameWidth: 1e3,
-      frameHeight: 1e3,
-      aspectRatioFamily: "square",
-      geometryFamily: "square-1x1",
-      fallbackPolicy: "verified-or-generated",
-      storageLabelSupported: true,
-      badgeSupported: true
-    },
-    {
-      id: "kakao-1000x1000",
-      channelId: "kakao",
-      frameWidth: 1e3,
-      frameHeight: 1e3,
-      aspectRatioFamily: "square",
-      geometryFamily: "square-1x1",
-      fallbackPolicy: "verified-or-generated",
-      storageLabelSupported: true,
-      badgeSupported: true
-    },
-    {
-      // 750x422 ≈ 1.78:1 — 실제 조사로 홈앤쇼핑/제이슨딜과 동일한 "N개 균일 슬롯 가로 배치"
-      // 구조임을 확인(wide-16x9). 대표: 카카오_750_소고기장조림130_1/3/5 (69:2292/69:2306/69:2322)
-      id: "kakao-750x422",
-      channelId: "kakao",
-      frameWidth: 750,
-      frameHeight: 422,
-      aspectRatioFamily: "wide",
-      geometryFamily: "wide-16x9",
-      fallbackPolicy: "verified-or-generated",
-      storageLabelSupported: true,
-      badgeSupported: true
-    },
-    {
-      id: "home-and-shopping-1000x1000",
-      channelId: "home-and-shopping",
-      frameWidth: 1e3,
-      frameHeight: 1e3,
-      aspectRatioFamily: "square",
-      geometryFamily: "square-1x1",
-      fallbackPolicy: "verified-or-generated",
-      storageLabelSupported: true,
-      badgeSupported: true
-    },
-    {
-      // 640x350 ≈ 1.83:1 — 카카오/제이슨딜과 동일 구조 확인(3슬롯, 69:1872). wide-16x9.
-      id: "home-and-shopping-640x350",
-      channelId: "home-and-shopping",
-      frameWidth: 640,
-      frameHeight: 350,
-      aspectRatioFamily: "wide",
-      geometryFamily: "wide-16x9",
-      fallbackPolicy: "verified-or-generated",
-      storageLabelSupported: true,
-      badgeSupported: true
-    },
-    {
-      id: "toss-1000x1000",
-      channelId: "toss",
-      frameWidth: 1e3,
-      frameHeight: 1e3,
-      aspectRatioFamily: "square",
-      geometryFamily: "square-1x1",
-      fallbackPolicy: "verified-or-generated",
-      storageLabelSupported: true,
-      badgeSupported: true
-    },
-    {
-      // 600x240 = 2.5:1 — hero 배경 이미지 + 마스크 아이콘 + N개 소형 슬롯이라는 독특한 구조
-      // (다른 wide처럼 균일 슬롯 가로 배치가 아님, 69:2553/69:2588/69:2601 조사 결과). 다른
-      // wide 규격과 다른 별도 geometryFamily(wide-5x2)로 분리 — verified Layout 미등록.
-      // fallbackPolicy를 'verified-only'로 설정 — 채널 고유 구조라 generic family 공식으로
-      // generated fallback을 만들면 실제 디자인과 전혀 다른 결과가 나오므로, verified Layout이
-      // 없으면 자동 생성하지 않고 reviewRequired로 사람이 수동 처리하게 한다.
-      id: "toss-600x240",
-      channelId: "toss",
-      frameWidth: 600,
-      frameHeight: 240,
-      aspectRatioFamily: "wide",
-      geometryFamily: "wide-5x2",
-      fallbackPolicy: "verified-only",
-      storageLabelSupported: true,
-      badgeSupported: true
-    },
-    {
-      id: "jasondeal-1000x1000",
-      channelId: "jasondeal",
-      frameWidth: 1e3,
-      frameHeight: 1e3,
-      aspectRatioFamily: "square",
-      geometryFamily: "square-1x1",
-      fallbackPolicy: "verified-or-generated",
-      storageLabelSupported: true,
-      badgeSupported: true
-    },
-    {
-      // 720x400 = 1.8:1 — 카카오/홈앤쇼핑과 동일 구조 확인(3슬롯, 69:1372). wide-16x9.
-      id: "jasondeal-720x400",
-      channelId: "jasondeal",
-      frameWidth: 720,
-      frameHeight: 400,
-      aspectRatioFamily: "wide",
-      geometryFamily: "wide-16x9",
-      fallbackPolicy: "verified-or-generated",
-      storageLabelSupported: true,
-      badgeSupported: true
-    },
-    {
-      id: "11st-1000x1000",
-      channelId: "11st",
-      frameWidth: 1e3,
-      frameHeight: 1e3,
-      aspectRatioFamily: "square",
-      geometryFamily: "square-1x1",
-      fallbackPolicy: "verified-or-generated",
-      storageLabelSupported: true,
-      badgeSupported: true
-    },
-    {
-      // 720x360 = 2:1 — 균일 슬롯 가로 배치 구조는 wide-16x9와 비슷하지만 비율이 뚜렷이 달라
-      // (2:1 vs ≈1.8:1) 별도 geometryFamily(wide-2x1)로 분리. 다른 채널과 교차 확인은 아직
-      // 안 됐음(현재 wide-2x1은 11번가 하나뿐). 대표: 11번가_720_소고기장조림130_1/3/5
-      // (69:1952/69:1936/69:1966)
-      id: "11st-720x360",
-      channelId: "11st",
-      frameWidth: 720,
-      frameHeight: 360,
-      aspectRatioFamily: "wide",
-      geometryFamily: "wide-2x1",
-      fallbackPolicy: "verified-or-generated",
-      storageLabelSupported: true,
-      badgeSupported: true
-    },
-    // --- 단일 규격(1000x1000) 채널 — 프레임 데이터상 예외 없이 정사각형만 확인됨 ---
-    {
-      id: "ssg-1000x1000",
-      channelId: "ssg",
-      frameWidth: 1e3,
-      frameHeight: 1e3,
-      aspectRatioFamily: "square",
-      geometryFamily: "square-1x1",
-      fallbackPolicy: "verified-or-generated",
-      storageLabelSupported: true,
-      badgeSupported: true
-    },
-    {
-      id: "auction-1000x1000",
-      channelId: "auction",
-      frameWidth: 1e3,
-      frameHeight: 1e3,
-      aspectRatioFamily: "square",
-      geometryFamily: "square-1x1",
-      fallbackPolicy: "verified-or-generated",
-      storageLabelSupported: true,
-      badgeSupported: true
-    },
-    {
-      id: "gmarket-1000x1000",
-      channelId: "gmarket",
-      frameWidth: 1e3,
-      frameHeight: 1e3,
-      aspectRatioFamily: "square",
-      geometryFamily: "square-1x1",
-      fallbackPolicy: "verified-or-generated",
-      storageLabelSupported: true,
-      badgeSupported: true
-    },
-    {
-      id: "sk-stoa-1000x1000",
-      channelId: "sk-stoa",
-      frameWidth: 1e3,
-      frameHeight: 1e3,
-      aspectRatioFamily: "square",
-      geometryFamily: "square-1x1",
-      fallbackPolicy: "verified-or-generated",
-      storageLabelSupported: true,
-      badgeSupported: true
-    },
-    {
-      id: "skt-deal-1000x1000",
-      channelId: "skt-deal",
-      frameWidth: 1e3,
-      frameHeight: 1e3,
-      aspectRatioFamily: "square",
-      geometryFamily: "square-1x1",
-      fallbackPolicy: "verified-or-generated",
-      storageLabelSupported: true,
-      badgeSupported: true
-    },
-    {
-      id: "coupang-1000x1000",
-      channelId: "coupang",
-      frameWidth: 1e3,
-      frameHeight: 1e3,
-      aspectRatioFamily: "square",
-      geometryFamily: "square-1x1",
-      fallbackPolicy: "verified-or-generated",
-      storageLabelSupported: true,
-      badgeSupported: true
-    },
-    {
-      id: "aliexpress-1000x1000",
-      channelId: "aliexpress",
-      frameWidth: 1e3,
-      frameHeight: 1e3,
-      aspectRatioFamily: "square",
-      geometryFamily: "square-1x1",
-      fallbackPolicy: "verified-or-generated",
-      storageLabelSupported: true,
-      badgeSupported: true
-    },
-    {
-      id: "ns-shopping-1000x1000",
-      channelId: "ns-shopping",
-      frameWidth: 1e3,
-      frameHeight: 1e3,
-      aspectRatioFamily: "square",
-      geometryFamily: "square-1x1",
-      fallbackPolicy: "verified-or-generated",
-      storageLabelSupported: true,
-      badgeSupported: true
-    },
-    {
-      // 표본 2개(반례 없음, 신뢰도 낮음) — 추가 확인 전까지는 사용에 주의
-      id: "alwayz-1000x1000",
-      channelId: "alwayz",
-      frameWidth: 1e3,
-      frameHeight: 1e3,
-      aspectRatioFamily: "square",
-      geometryFamily: "square-1x1",
-      fallbackPolicy: "verified-or-generated",
-      storageLabelSupported: true,
-      badgeSupported: true
-    },
-    {
-      // 표본 2개(반례 없음, 신뢰도 낮음) — 추가 확인 전까지는 사용에 주의
-      id: "eland-mall-1000x1000",
-      channelId: "eland-mall",
-      frameWidth: 1e3,
-      frameHeight: 1e3,
-      aspectRatioFamily: "square",
-      geometryFamily: "square-1x1",
-      fallbackPolicy: "verified-or-generated",
-      storageLabelSupported: true,
-      badgeSupported: true
-    },
-    {
-      // 표본 2개(반례 없음, 신뢰도 낮음) — 추가 확인 전까지는 사용에 주의
-      id: "lotte-on-1000x1000",
-      channelId: "lotte-on",
-      frameWidth: 1e3,
-      frameHeight: 1e3,
-      aspectRatioFamily: "square",
-      geometryFamily: "square-1x1",
-      fallbackPolicy: "verified-or-generated",
-      storageLabelSupported: true,
-      badgeSupported: true
-    }
-  ];
-
-  // ../core/src/data/layouts.ts
-  var LAYOUTS = [
-    {
-      // 대표 Figma frame: 네이버_소고기장조림130_1 (node 69:307) — image 312 슬롯 1개 확인
-      layoutKey: "LAYOUT_01",
-      arrangementKind: "single-center",
-      slots: [{ slotKey: "slot_1", role: "sale" }],
-      match: {
-        productGroups: ["simple-meal"],
-        compositions: ["single", "mixed"],
-        aspectRatioFamilies: ["square"],
-        geometryFamilies: ["square-1x1"],
-        thumbnailTypes: ["basic"]
-      },
-      priority: 100,
-      source: { kind: "verified" }
-    },
-    {
-      // 대표 Figma frame: 네이버_소고기장조림130_3 (node 69:417) — image 313/409/410 대각선 3슬롯 확인
-      layoutKey: "LAYOUT_02",
-      arrangementKind: "triple-cascade",
-      slots: [
-        { slotKey: "slot_1", role: "sale" },
-        { slotKey: "slot_2", role: "sale" },
-        { slotKey: "slot_3", role: "sale" }
-      ],
-      match: {
-        productGroups: ["simple-meal"],
-        compositions: ["single", "mixed"],
-        aspectRatioFamilies: ["square"],
-        geometryFamilies: ["square-1x1"],
-        thumbnailTypes: ["basic"]
-      },
-      priority: 100,
-      source: { kind: "verified" }
-    },
-    {
-      // 대표 Figma frame: 네이버_소고기장조림130_5 (node 69:442) — 상단 3 + 하단 2 피라미드 배치, 5슬롯 확인
-      layoutKey: "LAYOUT_03",
-      arrangementKind: "penta-pyramid",
-      slots: [
-        { slotKey: "slot_1", role: "sale" },
-        { slotKey: "slot_2", role: "sale" },
-        { slotKey: "slot_3", role: "sale" },
-        { slotKey: "slot_4", role: "sale" },
-        { slotKey: "slot_5", role: "sale" }
-      ],
-      match: {
-        productGroups: ["simple-meal"],
-        compositions: ["single", "mixed"],
-        aspectRatioFamilies: ["square"],
-        geometryFamilies: ["square-1x1"],
-        thumbnailTypes: ["basic"]
-      },
-      priority: 100,
-      source: { kind: "verified" }
-    },
-    {
-      // 대표 Figma frame: 네이버_소고기장조림130_10 (node 69:353) — 중앙 대형 1개(node 69:373,
-      // "image 321", 549x549) + 주변 소형 9개(node 69:364~69:372, 각 343~344px 균일 크기)로
-      // 구성된 main/sub 비대칭 클러스터. 실제 레이어 이름에는 "main"/"sub" 표기가 없어서(전부
-      // "image NNN") slot 자체의 role로 명시한다(LayoutSlotRole = 'sale'|'gift'|'main'|'sub',
-      // main/sub는 'sale'의 세부 구분 — getSaleSlotCount/assignSlots는 role!=='gift'를 판매
-      // 슬롯으로 취급하므로 10개 전부 정상적으로 판매 슬롯 수에 포함된다).
-      // V1 정책: assignSlots는 slot_1부터 순서대로 채우므로, Excel 순번이 가장 빠른 상품이
-      // slot_1(main, 중앙 대형)에 배정된다. 실제 Figma 바인딩(templateMapper, 아직 미연결)을
-      // 붙일 때 slot_1은 반드시 node 69:373("image 321")에, slot_2~10은 나머지 9개 소형
-      // 슬롯에 매핑해야 한다.
-      layoutKey: "LAYOUT_04",
-      arrangementKind: "grid-cluster-10",
-      slots: [
-        { slotKey: "slot_1", role: "main" },
-        // 중앙 대형(549x549) — node 69:373 "image 321"
-        { slotKey: "slot_2", role: "sub" },
-        { slotKey: "slot_3", role: "sub" },
-        { slotKey: "slot_4", role: "sub" },
-        { slotKey: "slot_5", role: "sub" },
-        { slotKey: "slot_6", role: "sub" },
-        { slotKey: "slot_7", role: "sub" },
-        { slotKey: "slot_8", role: "sub" },
-        { slotKey: "slot_9", role: "sub" },
-        { slotKey: "slot_10", role: "sub" }
-      ],
-      match: {
-        productGroups: ["simple-meal"],
-        compositions: ["single", "mixed"],
-        aspectRatioFamilies: ["square"],
-        geometryFamilies: ["square-1x1"],
-        thumbnailTypes: ["basic"]
-      },
-      priority: 100,
-      source: { kind: "verified" }
-    },
-    // --- wide-16x9 (카카오 750x422 / 홈앤쇼핑 640x350 / 제이슨딜 720x400 공유) ---
-    // 세 채널 모두 "N개 균일 크기 슬롯을 가로로 나란히 배치"하는 동일 구조임을 실제
-    // screenshot+node 구조로 확인했다(카카오 1/3/5 직접 확인, 홈앤쇼핑/제이슨딜은 3슬롯으로
-    // 교차 확인) — main/sub 구분 없음. channelIds를 지정하지 않아 세 채널 모두에서 재사용된다.
-    {
-      // 대표 frame: 카카오_750_소고기장조림130_1 (node 69:2292) — image 418 슬롯 1개
-      layoutKey: "LAYOUT_05",
-      arrangementKind: "single-center",
-      slots: [{ slotKey: "slot_1", role: "sale" }],
-      match: {
-        productGroups: ["simple-meal"],
-        compositions: ["single", "mixed"],
-        aspectRatioFamilies: ["wide"],
-        geometryFamilies: ["wide-16x9"],
-        thumbnailTypes: ["basic"]
-      },
-      priority: 100,
-      source: { kind: "verified" }
-    },
-    {
-      // 대표 frame: 카카오_750_소고기장조림130_3 (node 69:2306). 교차 확인:
-      // 홈앤쇼핑_640_소고기장조림130_3(69:1872), 제이슨딜_720x400_소고기장조림130_3팩(69:1372)
-      // — 세 채널 모두 균일 3슬롯 가로 배치.
-      layoutKey: "LAYOUT_06",
-      arrangementKind: "triple-row",
-      slots: [
-        { slotKey: "slot_1", role: "sale" },
-        { slotKey: "slot_2", role: "sale" },
-        { slotKey: "slot_3", role: "sale" }
-      ],
-      match: {
-        productGroups: ["simple-meal"],
-        compositions: ["single", "mixed"],
-        aspectRatioFamilies: ["wide"],
-        geometryFamilies: ["wide-16x9"],
-        thumbnailTypes: ["basic"]
-      },
-      priority: 100,
-      source: { kind: "verified" }
-    },
-    {
-      // 대표 frame: 카카오_750_소고기장조림130_5 (node 69:2322) — image 418~422 균일 5슬롯 가로 배치
-      layoutKey: "LAYOUT_07",
-      arrangementKind: "penta-row",
-      slots: [
-        { slotKey: "slot_1", role: "sale" },
-        { slotKey: "slot_2", role: "sale" },
-        { slotKey: "slot_3", role: "sale" },
-        { slotKey: "slot_4", role: "sale" },
-        { slotKey: "slot_5", role: "sale" }
-      ],
-      match: {
-        productGroups: ["simple-meal"],
-        compositions: ["single", "mixed"],
-        aspectRatioFamilies: ["wide"],
-        geometryFamilies: ["wide-16x9"],
-        thumbnailTypes: ["basic"]
-      },
-      priority: 100,
-      source: { kind: "verified" }
-    },
-    // --- wide-2x1 (11번가 720x360) ---
-    // wide-16x9와 배치 스타일(균일 슬롯 가로열)은 비슷하지만 실제 비율이 뚜렷이 달라(2:1 vs
-    // ≈1.8:1) 별도 geometryFamily로 분리했다. 현재 wide-2x1 채널은 11번가 하나뿐이라 다른
-    // 채널과의 교차 재사용은 아직 확인되지 않았다.
-    {
-      // 대표 frame: 11번가_720_소고기장조림130_1 (node 69:1952)
-      layoutKey: "LAYOUT_08",
-      arrangementKind: "single-center",
-      slots: [{ slotKey: "slot_1", role: "sale" }],
-      match: {
-        productGroups: ["simple-meal"],
-        compositions: ["single", "mixed"],
-        aspectRatioFamilies: ["wide"],
-        geometryFamilies: ["wide-2x1"],
-        thumbnailTypes: ["basic"]
-      },
-      priority: 100,
-      source: { kind: "verified" }
-    },
-    {
-      // 대표 frame: 11번가_720_소고기장조림130_3 (node 69:1936) — image 412/413/414 균일 3슬롯
-      layoutKey: "LAYOUT_09",
-      arrangementKind: "triple-row",
-      slots: [
-        { slotKey: "slot_1", role: "sale" },
-        { slotKey: "slot_2", role: "sale" },
-        { slotKey: "slot_3", role: "sale" }
-      ],
-      match: {
-        productGroups: ["simple-meal"],
-        compositions: ["single", "mixed"],
-        aspectRatioFamilies: ["wide"],
-        geometryFamilies: ["wide-2x1"],
-        thumbnailTypes: ["basic"]
-      },
-      priority: 100,
-      source: { kind: "verified" }
-    },
-    {
-      // 대표 frame: 11번가_720_소고기장조림130_5 (node 69:1966) — image 412~416 균일 5슬롯
-      layoutKey: "LAYOUT_10",
-      arrangementKind: "penta-row",
-      slots: [
-        { slotKey: "slot_1", role: "sale" },
-        { slotKey: "slot_2", role: "sale" },
-        { slotKey: "slot_3", role: "sale" },
-        { slotKey: "slot_4", role: "sale" },
-        { slotKey: "slot_5", role: "sale" }
-      ],
-      match: {
-        productGroups: ["simple-meal"],
-        compositions: ["single", "mixed"],
-        aspectRatioFamilies: ["wide"],
-        geometryFamilies: ["wide-2x1"],
-        thumbnailTypes: ["basic"]
-      },
-      priority: 100,
-      source: { kind: "verified" }
-    }
-  ];
-
-  // ../core/src/domain/thumbnailType.ts
-  var DEFAULT_THUMBNAIL_TYPE = "basic";
-
-  // ../core/src/engine/assignSlots.ts
-  function slotOrderKey(slotKey) {
-    const match = slotKey.match(/(\d+)\s*$/);
-    return match ? Number(match[1]) : Number.POSITIVE_INFINITY;
-  }
-  function sortBySlotOrder(slots) {
-    return [...slots].sort((a, b) => slotOrderKey(a.slotKey) - slotOrderKey(b.slotKey));
-  }
-  function saleSlotsOf(layout) {
-    return sortBySlotOrder(layout.slots.filter((s) => s.role !== "gift"));
-  }
-  function giftSlotsOf(layout) {
-    return sortBySlotOrder(layout.slots.filter((s) => s.role === "gift"));
-  }
-  function fillSlots(slots, assetKeys) {
-    return slots.map((slot, i) => ({ slotKey: slot.slotKey, assetKey: assetKeys[i], role: slot.role }));
-  }
-  function assignSlots(input) {
-    const saleSlots = saleSlotsOf(input.layout);
-    const giftSlots = giftSlotsOf(input.layout);
-    if (saleSlots.length !== input.saleAssetKeys.length) {
-      return {
-        ok: false,
-        reason: "SALE_SLOT_COUNT_MISMATCH",
-        message: `Layout "${input.layout.layoutKey}"\uC758 \uD310\uB9E4 \uC2AC\uB86F \uC218(${saleSlots.length})\uC640 \uC2E4\uC81C \uD310\uB9E4 \uC0C1\uD488 \uC218(${input.saleAssetKeys.length})\uAC00 \uC815\uD655\uD788 \uC77C\uCE58\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. (\uC77C\uBD80\uB9CC \uCC44\uC6B0\uAC70\uB098 \uACB9\uCCD0 \uB123\uB294 \uB4F1\uC758 \uB300\uCCB4 \uCC98\uB9AC\uB294 \uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4)`
-      };
-    }
-    if (giftSlots.length !== input.giftAssetKeys.length) {
-      return {
-        ok: false,
-        reason: "GIFT_SLOT_COUNT_MISMATCH",
-        message: `Layout "${input.layout.layoutKey}"\uC758 \uC99D\uC815 \uC2AC\uB86F \uC218(${giftSlots.length})\uC640 \uC2E4\uC81C \uC99D\uC815 \uC0C1\uD488 \uC218(${input.giftAssetKeys.length})\uAC00 \uC815\uD655\uD788 \uC77C\uCE58\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.`
-      };
-    }
-    return {
-      ok: true,
-      slots: [...fillSlots(saleSlots, input.saleAssetKeys), ...fillSlots(giftSlots, input.giftAssetKeys)]
-    };
-  }
-
-  // ../core/src/domain/layout.ts
-  function getSaleSlotCount(layout) {
-    return layout.slots.filter((s) => s.role !== "gift").length;
-  }
-  function getGiftSlotCount(layout) {
-    return layout.slots.filter((s) => s.role === "gift").length;
-  }
-
-  // ../core/src/engine/selectLayout.ts
-  function selectLayout(criteria, layouts) {
-    const slotCountMatches = layouts.filter(
-      (l) => getSaleSlotCount(l) === criteria.totalQuantity && getGiftSlotCount(l) === criteria.giftQuantity
-    );
-    if (slotCountMatches.length === 0) {
-      return {
-        ok: false,
-        reason: "NO_LAYOUT_WITH_MATCHING_SLOT_COUNT",
-        message: `\uD310\uB9E4\uC218\uB7C9 ${criteria.totalQuantity}\uAC1C` + (criteria.giftQuantity > 0 ? ` + \uC99D\uC815 ${criteria.giftQuantity}\uAC1C` : "") + `\uC640 \uC2AC\uB86F \uC218\uAC00 \uC815\uD655\uD788 \uC77C\uCE58\uD558\uB294 Layout\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. (\uCD95\uC18C\xB7\uC0DD\uB7B5\xB7\uC21C\uD658\uBC30\uCE58 \uB4F1\uC758 \uB300\uCCB4 \uCC98\uB9AC\uB294 \uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4)`,
-        criteria
-      };
-    }
-    const criteriaMatches = slotCountMatches.filter((l) => {
-      const m = l.match;
-      if (m.productGroups && !m.productGroups.includes(criteria.productGroup)) return false;
-      if (m.compositions && !m.compositions.includes(criteria.composition)) return false;
-      if (m.aspectRatioFamilies && !m.aspectRatioFamilies.includes(criteria.aspectRatioFamily)) return false;
-      if (m.geometryFamilies && !m.geometryFamilies.includes(criteria.geometryFamily)) return false;
-      if (m.channelIds && !m.channelIds.includes(criteria.channelId)) return false;
-      if (m.thumbnailTypes && !m.thumbnailTypes.includes(criteria.thumbnailType)) return false;
-      return true;
-    });
-    if (criteriaMatches.length === 0) {
-      return {
-        ok: false,
-        reason: "NO_MATCHING_LAYOUT",
-        message: "\uC2AC\uB86F \uC218\uB294 \uC77C\uCE58\uD558\uC9C0\uB9CC productGroup/\uAD6C\uC131/aspectRatio/\uCC44\uB110/\uC378\uB124\uC77C\uC720\uD615 \uC870\uAC74\uC744 \uB9CC\uC871\uD558\uB294 Layout\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.",
-        criteria
-      };
-    }
-    const maxPriority = Math.max(...criteriaMatches.map((l) => l.priority));
-    const topLayouts = criteriaMatches.filter((l) => l.priority === maxPriority);
-    if (topLayouts.length > 1) {
-      return {
-        ok: false,
-        reason: "AMBIGUOUS_LAYOUT_MATCH",
-        message: `\uB3D9\uC77C\uD55C \uC6B0\uC120\uC21C\uC704(${maxPriority})\uB97C \uAC00\uC9C4 Layout\uC774 \uC5EC\uB7EC \uAC1C \uC788\uC5B4 \uC790\uB3D9\uC73C\uB85C \uACB0\uC815\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`,
-        candidates: topLayouts.map((l) => l.layoutKey),
-        criteria
-      };
-    }
-    return { ok: true, layout: topLayouts[0] };
-  }
-
-  // ../core/src/data/arrangementFamilyPolicy.ts
-  var MAX_GENERATED_SLOT_COUNT = 20;
-  var ARRANGEMENT_FAMILY_POLICY = [
-    { familyId: "single-center", minSlotCount: 1, maxSlotCount: 1 },
-    { familyId: "row-linear", minSlotCount: 2, maxSlotCount: 3 },
-    { familyId: "diagonal-cascade", minSlotCount: 4, maxSlotCount: 5 },
-    { familyId: "pyramid-stack", minSlotCount: 6, maxSlotCount: 10 },
-    { familyId: "grid-cluster", minSlotCount: 11, maxSlotCount: MAX_GENERATED_SLOT_COUNT }
-  ];
-  function resolveArrangementFamily(slotCount) {
-    return ARRANGEMENT_FAMILY_POLICY.find(
-      (r) => slotCount >= r.minSlotCount && slotCount <= r.maxSlotCount
-    );
-  }
-
-  // ../core/src/engine/generateFallbackLayout.ts
-  function generateFallbackLayout(input) {
-    if (input.slotCount > MAX_GENERATED_SLOT_COUNT) {
-      return {
-        ok: false,
-        reason: "SLOT_COUNT_EXCEEDS_GENERATED_LIMIT",
-        message: `\uC2AC\uB86F \uC218 ${input.slotCount}\uAC1C\uB294 generated fallback\uC758 V1 \uCD5C\uB300\uCE58(${MAX_GENERATED_SLOT_COUNT}\uAC1C)\uB97C \uCD08\uACFC\uD569\uB2C8\uB2E4.`
-      };
-    }
-    const range = resolveArrangementFamily(input.slotCount);
-    if (!range) {
-      return {
-        ok: false,
-        reason: "NO_ARRANGEMENT_FAMILY_FOR_SLOT_COUNT",
-        message: `\uC2AC\uB86F \uC218 ${input.slotCount}\uAC1C\uC5D0 \uB300\uC751\uD558\uB294 \uBC30\uCE58 family\uAC00 \uC815\uCC45 \uB370\uC774\uD130(arrangementFamilyPolicy)\uC5D0 \uC815\uC758\uB418\uC5B4 \uC788\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.`
-      };
-    }
-    const slots = Array.from({ length: input.slotCount }, (_, i) => ({
-      slotKey: `slot_${i + 1}`,
-      role: "sale"
-    }));
-    return {
-      ok: true,
-      layout: {
-        layoutKey: `GENERATED_${range.familyId.toUpperCase()}_${input.slotCount}`,
-        arrangementKind: range.familyId,
-        slots,
-        // generated layout은 selectLayout으로 검색되지 않고 resolveLayout이 직접 생성해서
-        // 반환하므로 match 조건이 필요 없다.
-        match: {},
-        priority: 0,
-        source: { kind: "generated", params: { familyId: range.familyId, slotCount: input.slotCount } }
-      }
-    };
-  }
-
-  // ../core/src/engine/resolveLayout.ts
-  function resolveLayout(criteria, layouts) {
-    const verifiedLayouts = layouts.filter((l) => l.source.kind === "verified");
-    const selection = selectLayout(criteria, verifiedLayouts);
-    if (selection.ok) {
-      return { status: "resolved", layout: selection.layout };
-    }
-    if (selection.reason === "AMBIGUOUS_LAYOUT_MATCH") {
-      return { status: "error", reason: "AMBIGUOUS_LAYOUT_MATCH", message: selection.message };
-    }
-    if (criteria.giftQuantity > 0) {
-      return {
-        status: "reviewRequired",
-        reason: "GIFT_NO_VERIFIED_LAYOUT",
-        message: "\uC99D\uC815\uD488\uC774 \uD3EC\uD568\uB41C \uC694\uCCAD\uC740 \uAC80\uC99D\uB41C(verified) Layout\uC774 \uC788\uC744 \uB54C\uB9CC \uC790\uB3D9 \uC0DD\uC131\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4. \uD574\uB2F9 \uC2AC\uB86F \uAD6C\uC131\uC758 \uAC80\uC99D\uB41C Layout\uC774 \uC5C6\uC5B4 \uAC80\uD1A0\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4."
-      };
-    }
-    if (criteria.thumbnailType === "staged") {
-      return {
-        status: "reviewRequired",
-        reason: "STAGED_NO_VERIFIED_LAYOUT",
-        message: "staged \uC378\uB124\uC77C\uC740 \uAC80\uC99D\uB41C(verified) Layout\uB9CC \uC0AC\uC6A9\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4(\uC790\uB3D9 \uC0DD\uC131 \uAE08\uC9C0). \uD574\uB2F9 \uC2AC\uB86F \uAD6C\uC131\uC758 \uAC80\uC99D\uB41C Layout\uC774 \uC5C6\uC5B4 \uAC80\uD1A0\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4."
-      };
-    }
-    if (criteria.fallbackPolicy === "verified-only") {
-      return {
-        status: "reviewRequired",
-        reason: "VERIFIED_ONLY_NO_VERIFIED_LAYOUT",
-        message: "\uC774 \uCC44\uB110 \uADDC\uACA9\uC740 verified-only \uC815\uCC45\uC774 \uC801\uC6A9\uB418\uC5B4 \uC788\uC5B4(\uCC44\uB110 \uACE0\uC720 \uAD6C\uC870\uB77C generic\uD55C family \uACF5\uC2DD\uC744 \uC801\uC6A9\uD560 \uC218 \uC5C6\uC74C) \uAC80\uC99D\uB41C(verified) Layout\uC774 \uC5C6\uC73C\uBA74 \uC790\uB3D9 \uC0DD\uC131\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uD574\uB2F9 \uC2AC\uB86F \uAD6C\uC131\uC758 \uAC80\uC99D\uB41C Layout\uC774 \uC5C6\uC5B4 \uAC80\uD1A0\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4."
-      };
-    }
-    const fallback = generateFallbackLayout({ slotCount: criteria.totalQuantity });
-    if (!fallback.ok) {
-      return { status: "error", reason: fallback.reason, message: fallback.message };
-    }
-    return { status: "resolved", layout: fallback.layout };
-  }
-
-  // ../core/src/engine/composePlan.ts
-  function expandItems(items) {
-    const out = [];
-    for (const item of items) {
-      for (let i = 0; i < item.quantity; i++) out.push(item.productId);
-    }
-    return out;
-  }
-  function composePlan(request, deps) {
-    var _a, _b, _c, _d, _e, _f;
-    const channelPreset = deps.channelPresets.find((c) => c.id === request.channelPresetId);
-    if (!channelPreset) {
-      return {
-        ok: false,
-        reviewRequired: false,
-        reason: "CHANNEL_PRESET_NOT_FOUND",
-        message: `channelPresetId "${request.channelPresetId}"\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`
-      };
-    }
-    if (request.items.length === 0) {
-      return {
-        ok: false,
-        reviewRequired: false,
-        reason: "EMPTY_ITEMS",
-        message: "\uD310\uB9E4 \uC0C1\uD488 \uD56D\uBAA9(items)\uC774 \uBE44\uC5B4 \uC788\uC2B5\uB2C8\uB2E4."
-      };
-    }
-    const saleProductIds = expandItems(request.items);
-    const giftProductIds = expandItems((_a = request.giftItems) != null ? _a : []);
-    const productLookup = new Map(deps.products.map((p) => [p.id, p]));
-    for (const id of [...saleProductIds, ...giftProductIds]) {
-      if (!productLookup.has(id)) {
-        return {
-          ok: false,
-          reviewRequired: false,
-          reason: "PRODUCT_NOT_FOUND",
-          message: `productId "${id}"\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`
-        };
-      }
-    }
-    const groups = new Set(
-      [...saleProductIds, ...giftProductIds].map((id) => productLookup.get(id).productGroup)
-    );
-    if (groups.size > 1) {
-      return {
-        ok: false,
-        reviewRequired: false,
-        reason: "INCONSISTENT_PRODUCT_GROUP",
-        message: `\uC694\uCCAD\uC5D0 \uC11C\uB85C \uB2E4\uB978 productGroup\uC774 \uC11E\uC5EC \uC788\uC2B5\uB2C8\uB2E4: ${[...groups].join(", ")}`
-      };
-    }
-    const productGroup = [...groups][0];
-    const composition = new Set(request.items.map((i) => i.productId)).size > 1 ? "mixed" : "single";
-    const thumbnailType = (_b = request.thumbnailType) != null ? _b : DEFAULT_THUMBNAIL_TYPE;
-    const resolution = resolveLayout(
-      {
-        productGroup,
-        composition,
-        totalQuantity: saleProductIds.length,
-        giftQuantity: giftProductIds.length,
-        channelId: channelPreset.channelId,
-        aspectRatioFamily: channelPreset.aspectRatioFamily,
-        geometryFamily: channelPreset.geometryFamily,
-        thumbnailType,
-        fallbackPolicy: channelPreset.fallbackPolicy
-      },
-      deps.layouts
-    );
-    if (resolution.status === "error") {
-      return { ok: false, reviewRequired: false, reason: resolution.reason, message: resolution.message };
-    }
-    if (resolution.status === "reviewRequired") {
-      return { ok: false, reviewRequired: true, reason: resolution.reason, message: resolution.message };
-    }
-    const layout = resolution.layout;
-    const assignment = assignSlots({
-      layout,
-      saleAssetKeys: saleProductIds.map((id) => productLookup.get(id).assetKey),
-      giftAssetKeys: giftProductIds.map((id) => productLookup.get(id).assetKey)
-    });
-    if (!assignment.ok) {
-      return { ok: false, reviewRequired: false, reason: assignment.reason, message: assignment.message };
-    }
-    const generatedLayout = layout.source.kind === "generated";
-    return {
-      ok: true,
-      plan: {
-        layoutKey: layout.layoutKey,
-        channelPresetId: channelPreset.id,
-        productGroup,
-        thumbnailType,
-        slots: assignment.slots,
-        layoutSource: layout.source,
-        generatedLayout,
-        // generated fallback으로 만들어진 plan은 향후 AUTO_GENERATED_REVIEW 같은 별도
-        // 검토 영역으로 보내야 하므로 항상 reviewRequired=true로 표시한다.
-        reviewRequired: generatedLayout,
-        options: {
-          badge: (_c = request.options) == null ? void 0 : _c.badge,
-          storageLabel: (_d = request.options) == null ? void 0 : _d.storageLabel,
-          logoVariant: (_f = (_e = request.options) == null ? void 0 : _e.logoVariant) != null ? _f : "red"
-        }
-      }
-    };
-  }
-
-  // ../core/src/engine/composeChannelOutputs.ts
-  function composeChannelOutputs(request, deps) {
-    const _a = request, { channelId } = _a, requestWithoutChannel = __objRest(_a, ["channelId"]);
-    const presets = deps.channelPresets.filter((p) => p.channelId === channelId);
-    if (presets.length === 0) {
-      return {
-        ok: false,
-        reason: "CHANNEL_NOT_FOUND",
-        message: `channelId "${channelId}"\uC5D0 \uB4F1\uB85D\uB41C ChannelPreset\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.`
-      };
-    }
-    const outputs = presets.map((preset) => ({
-      channelPresetId: preset.id,
-      aspectRatioFamily: preset.aspectRatioFamily,
-      frameWidth: preset.frameWidth,
-      frameHeight: preset.frameHeight,
-      result: composePlan(__spreadProps(__spreadValues({}, requestWithoutChannel), { channelPresetId: preset.id }), deps)
-    }));
-    return { ok: true, outputs };
-  }
-
   // ../core/src/import/composeBatch.ts
   function productSummary(wo) {
     return wo.lines.map((l) => {
@@ -52328,6 +52328,251 @@
         outputStatusSummary: countByStatus(allOutputs.map((o) => o.status))
       }
     };
+  }
+
+  // ../core/src/import/workOrderTemplateBuilder.ts
+  var import_exceljs2 = __toESM(require_exceljs_min());
+  var COLORS = {
+    headerFill: "FF1F3864",
+    // 진한 네이비
+    headerFont: "FFFFFFFF",
+    workSheetTab: "FF2E7D32",
+    // 초록 — 직접 입력하는 시트
+    lockedSheetTab: "FFB71C1C",
+    // 빨강 — 건드리면 안 되는 시트
+    guideSheetTab: "FF616161",
+    // 회색 — 안내 시트
+    lockedBannerFill: "FFFDECEA",
+    lockedBannerFont: "FFB71C1C",
+    autoFillCell: "FFF2F2F2"
+  };
+  var PRODUCT_GROUP_LABELS2 = {
+    "simple-meal": "\uAC04\uD3B8\uC2DD",
+    "baby-food": "\uC601\uC720\uC544"
+  };
+  var TEMPLATE_ROW_COUNT = 500;
+  function styleHeaderRow(row) {
+    row.eachCell((cell) => {
+      cell.font = { bold: true, color: { argb: COLORS.headerFont } };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLORS.headerFill } };
+      cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+      cell.border = {
+        top: { style: "thin" },
+        bottom: { style: "thin" },
+        left: { style: "thin" },
+        right: { style: "thin" }
+      };
+    });
+    row.height = 22;
+  }
+  function addLockedSheetBanner(worksheet, colCount, message) {
+    const row = worksheet.getRow(1);
+    for (let c = 1; c <= colCount; c++) {
+      const cell = row.getCell(c);
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLORS.lockedBannerFill } };
+      if (c === 1) {
+        cell.value = message;
+        cell.font = { bold: true, color: { argb: COLORS.lockedBannerFont } };
+        cell.alignment = { vertical: "middle", horizontal: "left", wrapText: true };
+      }
+    }
+    row.height = 28;
+  }
+  function buildWorkOrderTemplateWorkbook(deps) {
+    var _a, _b;
+    const workbook = new import_exceljs2.default.Workbook();
+    workbook.creator = "thumbnail-generator";
+    workbook.created = /* @__PURE__ */ new Date();
+    const workSheet = workbook.addWorksheet("01_\uC791\uC5C5\uC694\uCCAD", {
+      properties: { tabColor: { argb: COLORS.workSheetTab } }
+    });
+    const productSheet = workbook.addWorksheet("02_\uC0C1\uD488\uBAA9\uB85D", {
+      properties: { tabColor: { argb: COLORS.lockedSheetTab } }
+    });
+    const channelSheet = workbook.addWorksheet("03_\uCC44\uB110\uBAA9\uB85D", {
+      properties: { tabColor: { argb: COLORS.lockedSheetTab } }
+    });
+    const guideSheet = workbook.addWorksheet("04_\uC791\uC131\uAC00\uC774\uB4DC", {
+      properties: { tabColor: { argb: COLORS.guideSheetTab } }
+    });
+    addLockedSheetBanner(
+      productSheet,
+      5,
+      "\u26A0 \uC774 \uC2DC\uD2B8\uB294 \uC790\uB3D9\uD654 \uAE30\uC900 \uB370\uC774\uD130\uC785\uB2C8\uB2E4. \uC9C1\uC811 \uC218\uC815\uD558\uC9C0 \uB9C8\uC138\uC694. \uC0C1\uD488 \uCD94\uAC00/\uBCC0\uACBD\uC740 \uB2F4\uB2F9\uC790\uC5D0\uAC8C \uC694\uCCAD\uD558\uC138\uC694."
+    );
+    const productHeaderRow = productSheet.getRow(2);
+    productHeaderRow.values = ["\uC0C1\uD488\uCF54\uB4DC", "\uC0C1\uD488\uAD70", "\uBE0C\uB79C\uB4DC", "\uC0C1\uD488\uBA85", "\uC6A9\uB7C9"];
+    styleHeaderRow(productHeaderRow);
+    productSheet.columns = [
+      { key: "code", width: 28 },
+      { key: "group", width: 12 },
+      { key: "brand", width: 12 },
+      { key: "name", width: 22 },
+      { key: "capacity", width: 10 }
+    ];
+    const simpleMealProducts = deps.products.filter((p) => p.productGroup === "simple-meal");
+    const babyProducts = deps.products.filter((p) => p.productGroup === "baby-food");
+    let r = 3;
+    const simpleMealStartRow = r;
+    for (const p of simpleMealProducts) {
+      productSheet.getRow(r).values = [p.code, PRODUCT_GROUP_LABELS2["simple-meal"], p.brand, p.name, (_a = p.capacity) != null ? _a : ""];
+      r++;
+    }
+    const simpleMealEndRow = r - 1;
+    const babyStartRow = r;
+    for (const p of babyProducts) {
+      productSheet.getRow(r).values = [p.code, PRODUCT_GROUP_LABELS2["baby-food"], p.brand, p.name, (_b = p.capacity) != null ? _b : ""];
+      r++;
+    }
+    const babyEndRow = r - 1;
+    workbook.definedNames.add(`'02_\uC0C1\uD488\uBAA9\uB85D'!$D$${simpleMealStartRow}:$D$${simpleMealEndRow}`, "PRODUCTS_\uAC04\uD3B8\uC2DD");
+    workbook.definedNames.add(`'02_\uC0C1\uD488\uBAA9\uB85D'!$D$${babyStartRow}:$D$${babyEndRow}`, "PRODUCTS_\uC601\uC720\uC544");
+    productSheet.protect("", { selectLockedCells: true, selectUnlockedCells: false });
+    addLockedSheetBanner(
+      channelSheet,
+      3,
+      "\u26A0 \uC774 \uC2DC\uD2B8\uB294 \uC790\uB3D9\uD654 \uAE30\uC900 \uB370\uC774\uD130\uC785\uB2C8\uB2E4. \uC9C1\uC811 \uC218\uC815\uD558\uC9C0 \uB9C8\uC138\uC694. \uCC44\uB110 \uCD94\uAC00/\uBCC0\uACBD\uC740 \uB2F4\uB2F9\uC790\uC5D0\uAC8C \uC694\uCCAD\uD558\uC138\uC694."
+    );
+    const channelHeaderRow = channelSheet.getRow(2);
+    channelHeaderRow.values = ["\uCC44\uB110\uBA85", "\uCC44\uB110ID", "\uBE44\uACE0"];
+    styleHeaderRow(channelHeaderRow);
+    channelSheet.columns = [
+      { key: "label", width: 22 },
+      { key: "channelId", width: 22 },
+      { key: "note", width: 30 }
+    ];
+    deps.channels.forEach((c, i) => {
+      channelSheet.getRow(3 + i).values = [c.label, c.id, ""];
+    });
+    const channelStartRow = 3;
+    const channelEndRow = 2 + deps.channels.length;
+    channelSheet.protect("", { selectLockedCells: true, selectUnlockedCells: false });
+    workSheet.views = [{ state: "frozen", ySplit: 1 }];
+    const workHeaderRow = workSheet.getRow(1);
+    workHeaderRow.values = ["\uC791\uC5C5ID", "\uC21C\uBC88", "\uC0C1\uD488\uAD70", "\uCC44\uB110", "\uC0C1\uD488\uBA85", "\uC0C1\uD488\uCF54\uB4DC(\uC790\uB3D9\uC785\uB825)", "\uC218\uB7C9", "\uB531\uC9C0\uC5EC\uBD80", "\uBE44\uACE0"];
+    styleHeaderRow(workHeaderRow);
+    workSheet.columns = [
+      { key: "workId", width: 14 },
+      { key: "seq", width: 8 },
+      { key: "productGroup", width: 12 },
+      { key: "channel", width: 16 },
+      { key: "productName", width: 22 },
+      { key: "productCodeDisplay", width: 28 },
+      { key: "quantity", width: 8 },
+      { key: "badge", width: 10 },
+      { key: "note", width: 30 }
+    ];
+    const productCodeFormula = (row) => `IFERROR(INDEX('02_\uC0C1\uD488\uBAA9\uB85D'!$A:$A,MATCH($E${row},'02_\uC0C1\uD488\uBAA9\uB85D'!$D:$D,0)),"")`;
+    for (let row = 2; row <= TEMPLATE_ROW_COUNT + 1; row++) {
+      const rowRef = workSheet.getRow(row);
+      rowRef.getCell(6).value = { formula: productCodeFormula(row) };
+      rowRef.getCell(6).font = { italic: true, color: { argb: "FF666666" } };
+      rowRef.getCell(6).fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLORS.autoFillCell } };
+      rowRef.getCell(3).dataValidation = {
+        type: "list",
+        allowBlank: false,
+        showErrorMessage: true,
+        errorTitle: "\uC0C1\uD488\uAD70 \uC624\uB958",
+        error: "\uB4DC\uB86D\uB2E4\uC6B4\uC5D0\uC11C \uAC04\uD3B8\uC2DD \uB610\uB294 \uC601\uC720\uC544\uB97C \uC120\uD0DD\uD558\uC138\uC694.",
+        formulae: ['"\uAC04\uD3B8\uC2DD,\uC601\uC720\uC544"']
+      };
+      rowRef.getCell(4).dataValidation = {
+        type: "list",
+        allowBlank: false,
+        showErrorMessage: true,
+        errorTitle: "\uCC44\uB110 \uC624\uB958",
+        error: "'03_\uCC44\uB110\uBAA9\uB85D' \uC2DC\uD2B8\uC5D0 \uB4F1\uB85D\uB41C \uCC44\uB110\uB9CC \uC120\uD0DD\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
+        formulae: [`'03_\uCC44\uB110\uBAA9\uB85D'!$A$${channelStartRow}:$A$${channelEndRow}`]
+      };
+      rowRef.getCell(5).dataValidation = {
+        type: "list",
+        allowBlank: false,
+        showErrorMessage: true,
+        errorTitle: "\uC0C1\uD488\uBA85 \uC624\uB958",
+        error: "\uBA3C\uC800 \uC0C1\uD488\uAD70\uC744 \uC120\uD0DD\uD558\uC138\uC694. \uC120\uD0DD\uD55C \uC0C1\uD488\uAD70\uC5D0 \uB4F1\uB85D\uB41C \uC0C1\uD488\uBA85\uB9CC \uC120\uD0DD\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
+        formulae: [`INDIRECT("PRODUCTS_"&$C${row})`]
+      };
+      rowRef.getCell(7).dataValidation = {
+        type: "whole",
+        operator: "greaterThanOrEqual",
+        allowBlank: false,
+        showErrorMessage: true,
+        errorTitle: "\uC218\uB7C9 \uC624\uB958",
+        error: "\uC218\uB7C9\uC740 1 \uC774\uC0C1\uC758 \uC815\uC218\uB9CC \uC785\uB825\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
+        formulae: [1]
+      };
+      rowRef.getCell(8).dataValidation = {
+        type: "list",
+        allowBlank: false,
+        showErrorMessage: true,
+        errorTitle: "\uB531\uC9C0\uC5EC\uBD80 \uC624\uB958",
+        error: "O \uB610\uB294 X \uC911\uC5D0\uC11C \uC120\uD0DD\uD558\uC138\uC694.",
+        formulae: ['"O,X"']
+      };
+    }
+    const exampleRows = [
+      ["WO-0001", 1, "\uAC04\uD3B8\uC2DD", "\uB124\uC774\uBC84", "\uBA54\uCD94\uB9AC\uC54C \uC7A5\uC870\uB9BC", void 0, 3, "X", ""],
+      ["WO-0002", 1, "\uAC04\uD3B8\uC2DD", "\uCE74\uCE74\uC624", "\uC18C\uACE0\uAE30\uC7A5\uC870\uB9BC", void 0, 1, "O", ""],
+      ["WO-0002", 2, "\uAC04\uD3B8\uC2DD", "\uCE74\uCE74\uC624", "\uBA54\uCD94\uB9AC\uC54C \uC7A5\uC870\uB9BC", void 0, 1, "O", ""],
+      ["WO-0002", 3, "\uAC04\uD3B8\uC2DD", "\uCE74\uCE74\uC624", "\uBD80\uCD94 \uAF2C\uB9C9\uBB34\uCE68", void 0, 1, "O", ""]
+    ];
+    exampleRows.forEach((values, i) => {
+      const row = workSheet.getRow(2 + i);
+      values.forEach((v, colIdx) => {
+        if (colIdx === 5) return;
+        row.getCell(colIdx + 1).value = v;
+      });
+    });
+    guideSheet.columns = [{ width: 90 }];
+    const guideLines = [
+      ["\uC81C\uBAA9", "\uC378\uB124\uC77C \uC790\uB3D9\uD654 \uC694\uCCAD\uC11C \u2014 \uC791\uC131 \uAC00\uC774\uB4DC"],
+      ["", ""],
+      ["\uC2DC\uD2B8 \uAD6C\uC131", ""],
+      ["  01_\uC791\uC5C5\uC694\uCCAD", "\uC2E4\uC81C\uB85C \uC791\uC131\uD558\uB294 \uC2DC\uD2B8. \uC774 \uD30C\uC77C\uC5D0\uC11C \uC720\uC77C\uD558\uAC8C \uC9C1\uC811 \uC785\uB825\uD558\uB294 \uC2DC\uD2B8\uC785\uB2C8\uB2E4."],
+      ["  02_\uC0C1\uD488\uBAA9\uB85D / 03_\uCC44\uB110\uBAA9\uB85D", "\uC790\uB3D9\uD654 \uAE30\uC900 \uB370\uC774\uD130\uC785\uB2C8\uB2E4. \uC9C1\uC811 \uC218\uC815\uD558\uC9C0 \uB9C8\uC138\uC694 (\uC2DC\uD2B8 \uBCF4\uD638 \uC801\uC6A9\uB428)."],
+      ["  04_\uC791\uC131\uAC00\uC774\uB4DC", "\uC774 \uC2DC\uD2B8. \uCC38\uACE0\uC6A9\uC785\uB2C8\uB2E4."],
+      ["", ""],
+      ["\uD575\uC2EC \uADDC\uCE59", ""],
+      ["  1) \uD55C \uC378\uB124\uC77C = \uD558\uB098\uC758 \uC791\uC5C5ID", "\uC791\uC5C5ID\uB294 \uC790\uC720 \uBB38\uC790\uC5F4\uC774\uC9C0\uB9CC \uD30C\uC77C \uB0B4\uC5D0\uC11C \uACE0\uC720\uD574\uC57C \uD569\uB2C8\uB2E4. (\uC608: WO-0001)"],
+      [
+        "  2) \uD63C\uD569\uC0C1\uD488 \uC791\uC131\uBC95",
+        '\uC5EC\uB7EC \uC0C1\uD488\uC774 \uD55C \uC378\uB124\uC77C\uC5D0 \uB4E4\uC5B4\uAC00\uBA74, \uAC19\uC740 \uC791\uC5C5ID\uB85C \uD589\uC744 \uC5EC\uB7EC \uAC1C \uB9CC\uB4E4\uACE0 "\uC21C\uBC88"\uC744 1,2,3...\uC73C\uB85C \uCC44\uC6C1\uB2C8\uB2E4.'
+      ],
+      [
+        "  3) \uAC19\uC740 \uC791\uC5C5ID \uB0B4 \uC77C\uAD00\uC131",
+        "\uAC19\uC740 \uC791\uC5C5ID\uC758 \uBAA8\uB4E0 \uD589\uC740 \uC0C1\uD488\uAD70 / \uCC44\uB110 / \uB531\uC9C0\uC5EC\uBD80\uAC00 \uC11C\uB85C \uAC19\uC544\uC57C \uD569\uB2C8\uB2E4 (\uD55C \uC378\uB124\uC77C\uC758 \uC18D\uC131\uC774\uBBC0\uB85C)."
+      ],
+      [
+        "  4) \uC0C1\uD488 \uC120\uD0DD",
+        '"\uC0C1\uD488\uBA85" \uB4DC\uB86D\uB2E4\uC6B4\uC5D0\uC11C \uACE0\uB974\uC138\uC694. "\uC0C1\uD488\uCF54\uB4DC(\uC790\uB3D9\uC785\uB825)" \uC5F4\uC740 \uC0C1\uD488\uBA85\uC744 \uAE30\uC900\uC73C\uB85C \uC790\uB3D9\uC73C\uB85C \uCC44\uC6CC\uC9C0\uB294 \uC790\uB3D9\uD654 \uC2DD\uBCC4\uC790\uC774\uBA70, \uC9C1\uC811 \uC218\uC815\uD558\uC9C0 \uB9C8\uC138\uC694.'
+      ],
+      [
+        "  5) \uCC44\uB110",
+        '\uC2E4\uC81C \uCD9C\uB825 \uADDC\uACA9/\uD15C\uD50C\uB9BF\uC774 \uB2EC\uB77C\uC9C0\uB294 \uD310\uB9E4\uCC44\uB110 \uB2E8\uC704\uC785\uB2C8\uB2E4. "\uAD11\uACE0\uC6A9", "\uC704\uD0C1" \uAC19\uC740 \uD45C\uAE30\uB294 \uACF5\uC2DD \uBD84\uB958\uAC00 \uC544\uB2C8\uBBC0\uB85C \uC774 \uBAA9\uB85D\uC5D0 \uC5C6\uC2B5\uB2C8\uB2E4.'
+      ],
+      ["  6) \uC218\uB7C9", "\uC591\uC758 \uC815\uC218\uB9CC \uC785\uB825\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4 (0 \uC774\uD558, \uC18C\uC218 \uC785\uB825 \uBD88\uAC00 \u2014 \uC785\uB825 \uC2DC \uC790\uB3D9\uC73C\uB85C \uC624\uB958\uAC00 \uD45C\uC2DC\uB429\uB2C8\uB2E4)."],
+      ["  7) \uB531\uC9C0\uC5EC\uBD80", "O \uB610\uB294 X \uC911 \uD558\uB098\uB97C \uC120\uD0DD\uD569\uB2C8\uB2E4. \uBE48\uCE78\uC73C\uB85C \uB450\uC9C0 \uB9C8\uC138\uC694."],
+      [
+        "  8) \uBE44\uACE0",
+        '\uC790\uC720\uB86D\uAC8C \uC785\uB825\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4. \uB77C\uC774\uD504\uC2A4\uD0C0\uC77C \uC5F0\uCD9C\uCEF7\uCC98\uB7FC \uACB0\uACFC\uBB3C \uC790\uCCB4\uAC00 \uB2EC\uB77C\uC9C0\uB294 \uD2B9\uC218 \uC694\uCCAD\uB3C4 \uC6B0\uC120 \uC5EC\uAE30\uC5D0 \uC801\uC2B5\uB2C8\uB2E4. \uBE44\uACE0\uAC00 \uC788\uB294 \uD589\uC740 \uC790\uB3D9 \uAC80\uC99D \uB2E8\uACC4\uC5D0\uC11C "\uAC80\uD1A0\uD544\uC694(reviewRequired)"\uB85C \uD45C\uC2DC\uB418\uC5B4, \uC790\uB3D9 \uC0DD\uC131 \uC804\uC5D0 \uB2F4\uB2F9\uC790 \uD655\uC778\uC744 \uAC70\uCE58\uAC8C \uB429\uB2C8\uB2E4.'
+      ],
+      ["", ""],
+      ["\uC0C1\uD488\uAD70/\uCC44\uB110/\uC0C1\uD488\uBA85\uC774 \uBAA9\uB85D\uC5D0 \uC5C6\uB2E4\uBA74", "02_\uC0C1\uD488\uBAA9\uB85D, 03_\uCC44\uB110\uBAA9\uB85D\uC5D0 \uD56D\uBAA9 \uCD94\uAC00\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4. \uB2F4\uB2F9\uC790\uC5D0\uAC8C \uC694\uCCAD\uD558\uC138\uC694."],
+      ["", ""],
+      [
+        "\uCC38\uACE0",
+        '\uC774 \uD15C\uD50C\uB9BF\uC740 packages/core/scripts/generateWorkOrderTemplate.mjs \uC2A4\uD06C\uB9BD\uD2B8(\uC800\uC7A5\uC18C \uAD00\uB9AC\uC790\uC6A9) \uB610\uB294 \uD50C\uB7EC\uADF8\uC778\uC758 "Excel \uC591\uC2DD \uB2E4\uC6B4\uB85C\uB4DC" \uBC84\uD2BC(\uC0AC\uC6A9\uC790\uC6A9)\uC73C\uB85C \uC5B8\uC81C\uB4E0 \uB2E4\uC2DC \uBC1B\uC744 \uC218 \uC788\uC2B5\uB2C8\uB2E4 \u2014 \uB458 \uB2E4 \uCD5C\uC2E0 \uC0C1\uD488/\uCC44\uB110 \uB370\uC774\uD130\uB97C \uADF8\uB300\uB85C \uBC18\uC601\uD569\uB2C8\uB2E4.'
+      ]
+    ];
+    guideLines.forEach(([title, body], i) => {
+      const row = guideSheet.getRow(i + 1);
+      row.getCell(1).value = body ? `${title}${title ? "  \u2014  " : ""}${body}` : title;
+      if (title && !body && title !== "") {
+        row.getCell(1).font = { bold: true, size: 13 };
+      }
+      row.getCell(1).alignment = { wrapText: true, vertical: "top" };
+    });
+    return workbook;
   }
 
   // src/templateMapper.ts
@@ -52617,6 +52862,7 @@
     const [renderResult, setRenderResult] = (0, import_react.useState)(null);
     const [exporting, setExporting] = (0, import_react.useState)(false);
     const [exportNotice, setExportNotice] = (0, import_react.useState)(null);
+    const [downloadingTemplate, setDownloadingTemplate] = (0, import_react.useState)(false);
     (0, import_react.useEffect)(() => {
       window.onmessage = (event) => {
         const msg = event.data.pluginMessage;
@@ -52649,6 +52895,22 @@
         window.onmessage = null;
       };
     }, []);
+    const onDownloadTemplate = async () => {
+      setError(null);
+      setDownloadingTemplate(true);
+      try {
+        const workbook = buildWorkOrderTemplateWorkbook({ products: PRODUCTS, channels: CHANNELS });
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], {
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        });
+        downloadBlob(blob, "\uC378\uB124\uC77C_\uC790\uB3D9\uD654_\uC694\uCCAD\uC11C.xlsx");
+      } catch (err) {
+        setError(`Excel \uC591\uC2DD \uC0DD\uC131 \uC911 \uC624\uB958: ${err.message}`);
+      } finally {
+        setDownloadingTemplate(false);
+      }
+    };
     const onFileChange = async (e) => {
       var _a2;
       const file = (_a2 = e.target.files) == null ? void 0 : _a2[0];
@@ -52688,7 +52950,27 @@
     const visibleRows = (_a = preview == null ? void 0 : preview.rows.filter((r) => filter === "all" || r.overallStatus === filter)) != null ? _a : [];
     return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { style: { margin: "4px 0", color: "#666" }, children: '\uD45C\uC900 \uC694\uCCAD\uC11C(01_\uC791\uC5C5\uC694\uCCAD)\uB97C \uC120\uD0DD\uD558\uBA74 \uC791\uC5C5ID \uAE30\uC900\uC73C\uB85C \uBB36\uACE0, \uCC44\uB110\uC5D0 \uB4F1\uB85D\uB41C \uCD9C\uB825 \uADDC\uACA9(preset)\uB9C8\uB2E4 Layout \uC120\uD0DD(verified/generated fallback)\uAE4C\uC9C0 \uC2DC\uBBAC\uB808\uC774\uC158\uD55C \uBBF8\uB9AC\uBCF4\uAE30\uB97C \uBCF4\uC5EC\uC90D\uB2C8\uB2E4. \uD55C \uCC44\uB110\uC774 \uC5EC\uB7EC \uADDC\uACA9(\uC608: \uCE74\uCE74\uC624 1000\xD71000 + 750\xD7422)\uC744 \uAC00\uC9C0\uBA74 \uC791\uC5C5ID \uD558\uB098\uAC00 \uADDC\uACA9 \uC218\uB9CC\uD07C \uCD9C\uB825\uC73C\uB85C \uB098\uB258\uACE0, \uAC01 \uCD9C\uB825\uC740 \uC11C\uB85C \uB3C5\uB9BD\uC801\uC73C\uB85C \uD310\uC815\uB429\uB2C8\uB2E4. \uC544\uB798 "Figma\uC5D0 \uC77C\uAD04 \uC0DD\uC131"\uC740 \uBBF8\uB9AC\uBCF4\uAE30 \uD310\uC815\uC744 \uADF8\uB300\uB85C \uB2E4\uC2DC \uACC4\uC0B0\uD574 \uC2E4\uC81C\uB85C clone\uC744 \uB9CC\uB4ED\uB2C8\uB2E4 \u2014 \uAE30\uC874 \uC6D0\uBCF8/\uD15C\uD50C\uB9BF \uD504\uB808\uC784\uC740 \uC218\uC815\uD558\uC9C0 \uC54A\uACE0, \uACB0\uACFC\uB294 AUTO_GENERATED_VERIFIED / AUTO_GENERATED_REVIEW \uD398\uC774\uC9C0\uC5D0 \uC815\uB9AC\uB429\uB2C8\uB2E4.' }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "file", accept: ".xlsx", onChange: onFileChange }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", alignItems: "center", gap: 10, margin: "8px 0" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { onClick: onDownloadTemplate, disabled: downloadingTemplate, children: downloadingTemplate ? "\uC591\uC2DD \uB9CC\uB4DC\uB294 \uC911\u2026" : "Excel \uC591\uC2DD \uB2E4\uC6B4\uB85C\uB4DC" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+          "label",
+          {
+            style: {
+              display: "inline-block",
+              padding: "4px 10px",
+              border: "1px solid #888",
+              borderRadius: 4,
+              cursor: "pointer",
+              background: "#f5f5f5"
+            },
+            children: [
+              "\uC791\uC131\uD55C Excel \uC5C5\uB85C\uB4DC",
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "file", accept: ".xlsx", onChange: onFileChange, style: { display: "none" } })
+            ]
+          }
+        )
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { style: { margin: "0 0 8px 0", fontSize: 11, color: "#666" }, children: 'Excel \uD30C\uC77C\uC774 \uC5C6\uB2E4\uBA74 \uBA3C\uC800 "Excel \uC591\uC2DD \uB2E4\uC6B4\uB85C\uB4DC"\uB85C \uBC1B\uC544 \uC791\uC131\uD55C \uB4A4, \uAC19\uC740 \uD30C\uC77C\uC744 "\uC791\uC131\uD55C Excel \uC5C5\uB85C\uB4DC"\uC5D0 \uC62C\uB824\uC8FC\uC138\uC694. \uC0C1\uD488\uBAA9\uB85D/\uCC44\uB110\uBAA9\uB85D\uC740 \uD56D\uC0C1 \uCD5C\uC2E0 \uB370\uC774\uD130\uB85C \uC790\uB3D9 \uCC44\uC6CC\uC9D1\uB2C8\uB2E4.' }),
       error && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { style: { color: STATUS_COLOR.error }, children: error }),
       preview && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", { style: { marginTop: 12, marginBottom: 2 }, children: [

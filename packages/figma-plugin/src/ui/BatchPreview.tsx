@@ -3,10 +3,12 @@ import React, { useEffect, useState } from 'react';
 // 않으므로 JSZip이 code.js에 섞여 들어가지 않는다(exceljs를 core/import로 분리한 것과 동일한
 // 원칙: 무거운 라이브러리는 실제로 쓰는 쪽 번들에만 있어야 한다).
 import JSZip from 'jszip';
+import { PRODUCTS, CHANNELS } from '@thumbnail-generator/core';
 import {
   readWorkOrderSheet,
   parseWorkOrderRows,
   composeBatchPreview,
+  buildWorkOrderTemplateWorkbook,
   type BatchGenerationRequest,
   type BatchPreviewResult,
   type BatchPreviewRow,
@@ -94,6 +96,7 @@ export function BatchPreview() {
   const [renderResult, setRenderResult] = useState<BatchRenderResult | null>(null);
   const [exporting, setExporting] = useState(false);
   const [exportNotice, setExportNotice] = useState<string | null>(null);
+  const [downloadingTemplate, setDownloadingTemplate] = useState(false);
 
   useEffect(() => {
     window.onmessage = (event: MessageEvent) => {
@@ -131,6 +134,26 @@ export function BatchPreview() {
       window.onmessage = null;
     };
   }, []);
+
+  const onDownloadTemplate = async () => {
+    setError(null);
+    setDownloadingTemplate(true);
+    try {
+      // PRODUCTS/CHANNELS는 현재 플러그인에 포함된 최신 Product Registry/채널 데이터 그대로다 —
+      // generateWorkOrderTemplate.mjs가 저장소용 정적 파일을 만들 때 쓰는 것과 동일한 빌더를
+      // 그대로 호출하므로, 하드코딩 상품/채널 목록을 이 파일에 따로 유지하지 않는다.
+      const workbook = buildWorkOrderTemplateWorkbook({ products: PRODUCTS, channels: CHANNELS });
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      downloadBlob(blob, '썸네일_자동화_요청서.xlsx');
+    } catch (err) {
+      setError(`Excel 양식 생성 중 오류: ${(err as Error).message}`);
+    } finally {
+      setDownloadingTemplate(false);
+    }
+  };
 
   const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -187,7 +210,28 @@ export function BatchPreview() {
         기존 원본/템플릿 프레임은 수정하지 않고, 결과는 AUTO_GENERATED_VERIFIED /
         AUTO_GENERATED_REVIEW 페이지에 정리됩니다.
       </p>
-      <input type="file" accept=".xlsx" onChange={onFileChange} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '8px 0' }}>
+        <button onClick={onDownloadTemplate} disabled={downloadingTemplate}>
+          {downloadingTemplate ? '양식 만드는 중…' : 'Excel 양식 다운로드'}
+        </button>
+        <label
+          style={{
+            display: 'inline-block',
+            padding: '4px 10px',
+            border: '1px solid #888',
+            borderRadius: 4,
+            cursor: 'pointer',
+            background: '#f5f5f5',
+          }}
+        >
+          작성한 Excel 업로드
+          <input type="file" accept=".xlsx" onChange={onFileChange} style={{ display: 'none' }} />
+        </label>
+      </div>
+      <p style={{ margin: '0 0 8px 0', fontSize: 11, color: '#666' }}>
+        Excel 파일이 없다면 먼저 "Excel 양식 다운로드"로 받아 작성한 뒤, 같은 파일을 "작성한 Excel
+        업로드"에 올려주세요. 상품목록/채널목록은 항상 최신 데이터로 자동 채워집니다.
+      </p>
 
       {error && <p style={{ color: STATUS_COLOR.error }}>{error}</p>}
 
