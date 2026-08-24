@@ -1,5 +1,5 @@
 import type { ProductGroupId } from './product';
-import type { AspectRatioFamily } from './channel';
+import type { AspectRatioFamily, GeometryFamily } from './channel';
 import type { ThumbnailType } from './thumbnailType';
 import type { LayoutSource } from './layoutSource';
 
@@ -40,6 +40,13 @@ export interface LayoutMatchCriteria {
   productGroups?: ProductGroupId[];
   compositions?: Array<'single' | 'mixed'>;
   aspectRatioFamilies?: AspectRatioFamily[];
+  /**
+   * aspectRatioFamilies보다 엄격한 조건. 지정하면 aspectRatioFamilies를 만족해도 이 값까지
+   * 일치해야 매칭된다 — 같은 aspectRatioFamily(wide) 안에서도 실제 비율이 다르면(예:
+   * wide-16x9 vs wide-5x2) 슬롯 배치가 다를 수 있으므로, wide 계열 verified Layout은 반드시
+   * geometryFamilies를 명시해서 서로 다른 비율끼리 잘못 재사용되지 않게 한다.
+   */
+  geometryFamilies?: GeometryFamily[];
   channelIds?: string[];
   thumbnailTypes?: ThumbnailType[];
 }

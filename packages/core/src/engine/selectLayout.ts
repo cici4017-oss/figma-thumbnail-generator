@@ -1,4 +1,4 @@
-import type { AspectRatioFamily } from '../domain/channel';
+import type { AspectRatioFamily, GeometryFamily } from '../domain/channel';
 import type { ProductGroupId } from '../domain/product';
 import type { ThumbnailType } from '../domain/thumbnailType';
 import { type LayoutDefinition, getGiftSlotCount, getSaleSlotCount } from '../domain/layout';
@@ -12,6 +12,8 @@ export interface LayoutSelectionCriteria {
   giftQuantity: number;
   channelId: string;
   aspectRatioFamily: AspectRatioFamily;
+  /** aspectRatioFamily보다 세분화된 실제 비율. ChannelPreset.geometryFamily에서 그대로 옴. */
+  geometryFamily: GeometryFamily;
   thumbnailType: ThumbnailType;
 }
 
@@ -60,6 +62,7 @@ export function selectLayout(
     if (m.productGroups && !m.productGroups.includes(criteria.productGroup)) return false;
     if (m.compositions && !m.compositions.includes(criteria.composition)) return false;
     if (m.aspectRatioFamilies && !m.aspectRatioFamilies.includes(criteria.aspectRatioFamily)) return false;
+    if (m.geometryFamilies && !m.geometryFamilies.includes(criteria.geometryFamily)) return false;
     if (m.channelIds && !m.channelIds.includes(criteria.channelId)) return false;
     if (m.thumbnailTypes && !m.thumbnailTypes.includes(criteria.thumbnailType)) return false;
     return true;

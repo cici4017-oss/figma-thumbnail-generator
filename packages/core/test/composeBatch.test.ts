@@ -36,8 +36,10 @@ async function buildSampleWorkbook(): Promise<ArrayBuffer> {
   ws.addRow(['WO-P5', 1, '간편식', '네이버', '없는상품', '', 1, 'X', '']);
 
   // 5) 복수 규격 채널(카카오) fan-out 케이스: 작업ID 1개가 채널에 등록된 preset 수(2개)만큼
-  //    output으로 fan-out되어야 함
-  ws.addRow(['WO-P6', 1, '간편식', '카카오', '소고기장조림', 'SIMPLE_BEEF_JANGJORIM_130', 3, 'X', '']);
+  //    output으로 fan-out되어야 함. 수량 10은 square(LAYOUT_04)는 verified가 있지만
+  //    wide-16x9는 아직 10슬롯 verified가 없어 generated로 갈리므로, 사용자 예시(한 output만
+  //    generated)를 그대로 재현한다.
+  ws.addRow(['WO-P6', 1, '간편식', '카카오', '소고기장조림', 'SIMPLE_BEEF_JANGJORIM_130', 10, 'X', '']);
 
   return wb.xlsx.writeBuffer() as unknown as Promise<ArrayBuffer>;
 }
@@ -99,9 +101,10 @@ async function main() {
   assert.ok(p5.parserReason && p5.parserReason.includes('상품코드'));
 
   // 5) 복수 규격 채널(카카오) fan-out -> output 2개(square/wide), 사용자가 준 예시와 동일한 패턴:
-  //    square(1000x1000)는 LAYOUT_02(채널 무관, aspectRatioFamily 기준 재사용)로 verified/ready,
-  //    wide(750x422)는 검증된 Layout이 없어 generated/reviewRequired — 한쪽이 generated라고
-  //    다른 쪽까지 reviewRequired로 끌어내리지 않는다(#7).
+  //    수량 10 기준 square(1000x1000)는 LAYOUT_04(채널 무관, geometryFamily square-1x1
+  //    재사용)로 verified/ready, wide(750x422, wide-16x9)는 10슬롯 verified가 아직 없어
+  //    generated/reviewRequired — 한쪽이 generated라고 다른 쪽까지 reviewRequired로
+  //    끌어내리지 않는다(#7).
   const p6 = byId(preview.rows, 'WO-P6');
   assert.equal(p6.channelLabel, '카카오');
   assert.equal(p6.outputs.length, 2);
@@ -113,7 +116,7 @@ async function main() {
   assert.equal(kakaoWide!.aspectRatioFamily, 'wide');
   assert.equal(kakaoSquare!.status, 'ready');
   assert.equal(kakaoSquare!.layoutSource, 'verified');
-  assert.equal(kakaoSquare!.layoutKey, 'LAYOUT_02');
+  assert.equal(kakaoSquare!.layoutKey, 'LAYOUT_04');
   assert.equal(kakaoWide!.status, 'reviewRequired');
   assert.equal(kakaoWide!.layoutSource, 'generated');
   // 작업ID 요약 상태는 outputs 중 최악의 상태(reviewRequired)를 따르지만, 이는 필터용

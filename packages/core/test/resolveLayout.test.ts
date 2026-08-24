@@ -12,6 +12,7 @@ const baseCriteria: LayoutSelectionCriteria = {
   giftQuantity: 0,
   channelId: 'naver',
   aspectRatioFamily: 'square',
+  geometryFamily: 'square-1x1',
   thumbnailType: 'basic',
 };
 

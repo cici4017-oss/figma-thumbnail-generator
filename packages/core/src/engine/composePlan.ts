@@ -92,6 +92,7 @@ export function composePlan(
       giftQuantity: giftProductIds.length,
       channelId: channelPreset.channelId,
       aspectRatioFamily: channelPreset.aspectRatioFamily,
+      geometryFamily: channelPreset.geometryFamily,
       thumbnailType,
     },
     deps.layouts,

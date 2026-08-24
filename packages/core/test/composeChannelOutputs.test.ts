@@ -40,9 +40,11 @@ const products: Product[] = [
 }
 
 // 3) 복수 규격 채널(kakao, 실제 데이터) -> output 2개, 각각 독립적으로 판정됨(#7)
-//    LAYOUT_02는 channelId가 아니라 aspectRatioFamily(square)로만 match하므로(기존 채널 재사용
-//    설계), 네이버뿐 아니라 카카오의 1000x1000(square) 출력에도 그대로 재사용된다 — 반면
-//    카카오의 750x422(wide)는 아직 검증된 Layout이 없어 generated fallback이어야 한다.
+//    LAYOUT_02는 channelId가 아니라 aspectRatioFamily+geometryFamily(square-1x1)로만
+//    match하므로(기존 채널 재사용 설계), 네이버뿐 아니라 카카오의 1000x1000 출력에도 그대로
+//    재사용된다. 카카오의 750x422(wide-16x9)도 이제 verified Layout(LAYOUT_06)이 등록되어
+//    있으므로 두 output 모두 verified/ready여야 한다 — 단, layoutKey는 서로 다르다(같은
+//    slotCount라도 geometryFamily별로 별도 Layout).
 {
   const result = composeChannelOutputs(
     { items: [{ productId: 'p-beef', quantity: 3 }], channelId: 'kakao' },
@@ -61,25 +63,33 @@ const products: Product[] = [
     assert.equal(wide!.result.ok, true);
     assert.equal(square!.result.ok && square!.result.plan.layoutSource.kind, 'verified');
     assert.equal(square!.result.ok && square!.result.plan.layoutKey, 'LAYOUT_02');
-    assert.equal(wide!.result.ok && wide!.result.plan.layoutSource.kind, 'generated');
+    assert.equal(wide!.result.ok && wide!.result.plan.layoutSource.kind, 'verified');
+    assert.equal(wide!.result.ok && wide!.result.plan.layoutKey, 'LAYOUT_06');
+    assert.notEqual(
+      square!.result.ok && square!.result.plan.layoutKey,
+      wide!.result.ok && wide!.result.plan.layoutKey,
+    );
   }
-  console.log('  ✓ 복수 규격 채널(kakao) -> square는 LAYOUT_02(채널 무관 재사용) verified, wide는 generated');
+  console.log('  ✓ 복수 규격 채널(kakao) -> square=LAYOUT_02, wide=LAYOUT_06 (둘 다 채널 무관 재사용, verified)');
 }
 
-// 4) square는 verified, wide는 검증된 Layout이 없어 generated -> 같은 채널의 두 output이
-//    서로 다른 결과(ready/reviewRequired)를 가져야 하고, 한쪽이 generated라고 해서 다른 쪽까지
-//    reviewRequired가 되지 않아야 한다(#7). square Layout(LAYOUT_02)을 wide로 스케일해서
-//    재사용하지 않는다는 것도 함께 확인한다(#8) — wide 결과의 layoutKey가 LAYOUT_02가 아니라
-//    generated Layout이어야 한다.
+// 4) square는 verified, geometryFamily가 다른(verified Layout이 없는) wide는 generated ->
+//    같은 채널의 두 output이 서로 다른 결과(ready/reviewRequired)를 가져야 하고, 한쪽이
+//    generated라고 해서 다른 쪽까지 reviewRequired가 되지 않아야 한다(#7). square
+//    Layout(LAYOUT_02)을 wide로 스케일해서 재사용하지 않는다는 것도 함께 확인한다(#8) —
+//    wide 결과의 layoutKey가 LAYOUT_02가 아니라 generated Layout이어야 한다.
+//    (wide-5x2는 이번 조사에서 verified Layout을 등록하지 않기로 한 geometryFamily라 fallback
+//    검증에 그대로 쓸 수 있다 — 실제 토스 채널 데이터와는 별개인 테스트 전용 조합이다.)
 {
   const syntheticPresets: ChannelPreset[] = [
     ...CHANNEL_PRESETS,
     {
-      id: 'naver-720x360-test-only',
+      id: 'naver-wide-5x2-test-only',
       channelId: 'naver',
       frameWidth: 720,
-      frameHeight: 360,
+      frameHeight: 288,
       aspectRatioFamily: 'wide',
+      geometryFamily: 'wide-5x2',
       storageLabelSupported: true,
       badgeSupported: true,
     },
@@ -93,7 +103,7 @@ const products: Product[] = [
   if (result.ok) {
     assert.equal(result.outputs.length, 2);
     const square = result.outputs.find((o) => o.channelPresetId === 'naver-1000x1000')!;
-    const wide = result.outputs.find((o) => o.channelPresetId === 'naver-720x360-test-only')!;
+    const wide = result.outputs.find((o) => o.channelPresetId === 'naver-wide-5x2-test-only')!;
 
     assert.equal(square.result.ok, true);
     assert.equal(square.result.ok && square.result.plan.layoutKey, 'LAYOUT_02');
@@ -105,10 +115,39 @@ const products: Product[] = [
     assert.notEqual(wide.result.ok && wide.result.plan.layoutKey, 'LAYOUT_02');
     assert.equal(wide.result.ok && wide.result.plan.reviewRequired, true);
   }
-  console.log('  ✓ square=verified/ready, wide=generated/reviewRequired가 서로 영향 없이 독립적으로 판정됨');
+  console.log('  ✓ square=verified/ready, wide(geometryFamily 불일치)=generated/reviewRequired가 서로 영향 없이 독립적으로 판정됨');
 }
 
-// 5) LayoutDefinition의 aspectRatioFamilies 조건 자체가 이미 "채널별 verified 우선, 없으면
+// 5) geometryFamily 분리 검증: 같은 aspectRatioFamily(wide)·같은 슬롯 수(3)라도
+//    geometryFamily가 다르면(wide-16x9 vs wide-2x1) 서로 다른 verified Layout이 선택되어야
+//    한다 — 비율이 다른 wide끼리 잘못 재사용되지 않는다는 것을 실제 등록 데이터로 확인.
+{
+  const kakaoResult = composeChannelOutputs(
+    { items: [{ productId: 'p-beef', quantity: 3 }], channelId: 'kakao' },
+    { products, channelPresets: CHANNEL_PRESETS, layouts: LAYOUTS },
+  );
+  const elevenStResult = composeChannelOutputs(
+    { items: [{ productId: 'p-beef', quantity: 3 }], channelId: '11st' },
+    { products, channelPresets: CHANNEL_PRESETS, layouts: LAYOUTS },
+  );
+  assert.equal(kakaoResult.ok, true);
+  assert.equal(elevenStResult.ok, true);
+  if (kakaoResult.ok && elevenStResult.ok) {
+    const kakaoWide = kakaoResult.outputs.find((o) => o.channelPresetId === 'kakao-750x422')!;
+    const elevenStWide = elevenStResult.outputs.find((o) => o.channelPresetId === '11st-720x360')!;
+    assert.equal(kakaoWide.result.ok, true);
+    assert.equal(elevenStWide.result.ok, true);
+    assert.equal(kakaoWide.result.ok && kakaoWide.result.plan.layoutKey, 'LAYOUT_06'); // wide-16x9
+    assert.equal(elevenStWide.result.ok && elevenStWide.result.plan.layoutKey, 'LAYOUT_09'); // wide-2x1
+    assert.notEqual(
+      kakaoWide.result.ok && kakaoWide.result.plan.layoutKey,
+      elevenStWide.result.ok && elevenStWide.result.plan.layoutKey,
+    );
+  }
+  console.log('  ✓ geometryFamily가 다르면(wide-16x9 vs wide-2x1) 같은 슬롯 수라도 다른 verified Layout이 선택됨');
+}
+
+// 6) LayoutDefinition의 aspectRatioFamilies 조건 자체가 이미 "채널별 verified 우선, 없으면
 //    generated fallback"을 만족시킨다는 것을 selectLayout 단계에서도 재확인 — LAYOUT_02는
 //    aspectRatioFamilies:['square']만 match하므로 wide 기준으로는 애초에 후보에서 제외된다.
 {
