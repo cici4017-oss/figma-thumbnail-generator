@@ -5,8 +5,10 @@ import {
   composeBatchPreview,
   type BatchPreviewResult,
   type BatchPreviewRow,
+  type BatchPreviewOutput,
   type BatchPreviewStatus,
 } from '@thumbnail-generator/core/import';
+import { checkRenderability } from '../renderPreflight';
 
 const STATUS_LABEL: Record<BatchPreviewStatus, string> = {
   ready: '생성가능',
@@ -24,6 +26,27 @@ const SOURCE_LABEL: Record<'verified' | 'generated', string> = {
   verified: 'VERIFIED',
   generated: 'GENERATED',
 };
+
+/**
+ * plan status(위 STATUS_*, core가 판정하는 "이 조합이 논리적으로 유효한가")와 renderability
+ * (아래, 이 output을 지금 실제 Figma에서 만들 수 있는가)는 서로 다른 질문이라 섞어 보여주지
+ * 않는다 — status가 'ready'/'reviewRequired'여도(=layoutKey가 있어도) 실제 template
+ * binding/generated renderer 지원이 없으면 지금 당장 생성은 안 될 수 있다.
+ */
+function renderabilityLabel(output: BatchPreviewOutput): { text: string; color: string } {
+  if (!output.layoutKey || !output.layoutSource) {
+    return { text: '-', color: '#999' };
+  }
+  const result = checkRenderability({
+    layoutKey: output.layoutKey,
+    channelPresetId: output.channelPresetId,
+    layoutSource: output.layoutSource,
+    arrangementFamily: output.arrangementFamily,
+  });
+  if (result.renderable) return { text: '생성 가능', color: '#1e8e3e' };
+  if (result.reason === 'NO_FIGMA_TEMPLATE_BINDING') return { text: '템플릿 없음', color: '#c0392b' };
+  return { text: 'generated 미지원', color: '#c0392b' };
+}
 
 const cellStyle: React.CSSProperties = { border: '1px solid #eee', padding: '4px 6px', verticalAlign: 'top' };
 const groupCellStyle: React.CSSProperties = { ...cellStyle, background: '#fafafa', fontWeight: 600 };
@@ -108,6 +131,9 @@ export function BatchPreview() {
                   <th style={cellStyle}>family</th>
                   <th style={cellStyle}>source</th>
                   <th style={cellStyle}>상태</th>
+                  <th style={cellStyle} title="이 조합을 지금 실제 Figma에서 생성할 수 있는지(별개 판정)">
+                    Figma 생성
+                  </th>
                   <th style={cellStyle}>오류/검토 사유</th>
                 </tr>
               </thead>
@@ -123,7 +149,7 @@ export function BatchPreview() {
                           <td style={groupCellStyle}>{row.channelLabel ?? row.channelId ?? '(불일치/미확인)'}</td>
                           <td style={groupCellStyle}>{row.productSummary}</td>
                           <td style={groupCellStyle}>{row.totalQuantity}</td>
-                          <td style={cellStyle} colSpan={5}>
+                          <td style={cellStyle} colSpan={6}>
                             (채널 fan-out 미시도)
                           </td>
                           <td style={{ ...cellStyle, color: STATUS_COLOR[row.overallStatus], fontWeight: 600 }}>
@@ -158,6 +184,14 @@ export function BatchPreview() {
                             <td style={{ ...cellStyle, color: STATUS_COLOR[output.status], fontWeight: 600 }}>
                               {STATUS_LABEL[output.status]}
                             </td>
+                            {(() => {
+                              const renderability = renderabilityLabel(output);
+                              return (
+                                <td style={{ ...cellStyle, color: renderability.color, fontWeight: 600 }}>
+                                  {renderability.text}
+                                </td>
+                              );
+                            })()}
                             <td style={cellStyle}>{output.reason ?? ''}</td>
                           </tr>
                         ))
