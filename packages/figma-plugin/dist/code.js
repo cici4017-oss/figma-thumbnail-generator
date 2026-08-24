@@ -1272,23 +1272,17 @@
 
   // src/templateMapper.ts
   var FIGMA_TEMPLATE_BINDINGS = [
+    // --- naver-1000x1000 (square-1x1) ---
+    {
+      layoutKey: "LAYOUT_01",
+      channelPresetId: "naver-1000x1000",
+      templateFrameName: "\uB124\uC774\uBC84_\uC18C\uACE0\uAE30\uC7A5\uC870\uB9BC130_1",
+      templateFrameNodeId: "69:307",
+      slotBindings: [{ slotKey: "slot_1", layerName: "image 312" }]
+    },
     {
       layoutKey: "LAYOUT_02",
       channelPresetId: "naver-1000x1000",
-      templateFrameName: "\uB124\uC774\uBC84_\uC18C\uACE0\uAE30\uC7A5\uC870\uB9BC130_3",
-      templateFrameNodeId: "69:417",
-      slotBindings: [
-        { slotKey: "slot_1", layerName: "image 313" },
-        { slotKey: "slot_2", layerName: "image 409" },
-        { slotKey: "slot_3", layerName: "image 410" }
-      ]
-    },
-    {
-      // LAYOUT_02는 channelIds 제한이 없는 채널-무관 verified Layout이므로(이전 조사에서 확인),
-      // 카카오의 square-1x1 출력(kakao-1000x1000)도 동일한 실제 프레임을 그대로 재사용한다.
-      // 새 Figma 콘텐츠를 만드는 게 아니라 같은 원본을 다른 channelPresetId에도 등록하는 것뿐이다.
-      layoutKey: "LAYOUT_02",
-      channelPresetId: "kakao-1000x1000",
       templateFrameName: "\uB124\uC774\uBC84_\uC18C\uACE0\uAE30\uC7A5\uC870\uB9BC130_3",
       templateFrameNodeId: "69:417",
       slotBindings: [
@@ -1311,6 +1305,49 @@
       ]
     },
     {
+      // slot_1(main, 중앙 대형 549x549) = "image 321"(69:373). slot_2~10(sub, 소형 9개)은
+      // 레이어 이름의 숫자 순서(image 312~320)로 결정론적으로 매핑했다 — 물리적 위치가 role별로
+      // 구분되어 있지 않아(전부 "sub"), 어떤 소형 슬롯이 어떤 slotKey인지는 배치상 의미가 없다.
+      layoutKey: "LAYOUT_04",
+      channelPresetId: "naver-1000x1000",
+      templateFrameName: "\uB124\uC774\uBC84_\uC18C\uACE0\uAE30\uC7A5\uC870\uB9BC130_10",
+      templateFrameNodeId: "69:353",
+      slotBindings: [
+        { slotKey: "slot_1", layerName: "image 321" },
+        { slotKey: "slot_2", layerName: "image 312" },
+        { slotKey: "slot_3", layerName: "image 313" },
+        { slotKey: "slot_4", layerName: "image 314" },
+        { slotKey: "slot_5", layerName: "image 315" },
+        { slotKey: "slot_6", layerName: "image 316" },
+        { slotKey: "slot_7", layerName: "image 317" },
+        { slotKey: "slot_8", layerName: "image 318" },
+        { slotKey: "slot_9", layerName: "image 319" },
+        { slotKey: "slot_10", layerName: "image 320" }
+      ]
+    },
+    // --- kakao-1000x1000 (square-1x1) ---
+    {
+      // 카카오 square 3슬롯의 실제 frame은 "카카오_1000_소고기장조림130_3"(69:2368)이다
+      // (네이버의 69:417과는 별개 frame).
+      layoutKey: "LAYOUT_02",
+      channelPresetId: "kakao-1000x1000",
+      templateFrameName: "\uCE74\uCE74\uC624_1000_\uC18C\uACE0\uAE30\uC7A5\uC870\uB9BC130_3",
+      templateFrameNodeId: "69:2368",
+      slotBindings: [
+        { slotKey: "slot_1", layerName: "image 416" },
+        { slotKey: "slot_2", layerName: "image 417" },
+        { slotKey: "slot_3", layerName: "image 418" }
+      ]
+    },
+    // --- kakao-750x422 (wide-16x9) ---
+    {
+      layoutKey: "LAYOUT_05",
+      channelPresetId: "kakao-750x422",
+      templateFrameName: "\uCE74\uCE74\uC624_750_\uC18C\uACE0\uAE30\uC7A5\uC870\uB9BC130_1",
+      templateFrameNodeId: "69:2292",
+      slotBindings: [{ slotKey: "slot_1", layerName: "image 418" }]
+    },
+    {
       layoutKey: "LAYOUT_06",
       channelPresetId: "kakao-750x422",
       templateFrameName: "\uCE74\uCE74\uC624_750_\uC18C\uACE0\uAE30\uC7A5\uC870\uB9BC130_3",
@@ -1319,6 +1356,54 @@
         { slotKey: "slot_1", layerName: "image 418" },
         { slotKey: "slot_2", layerName: "image 419" },
         { slotKey: "slot_3", layerName: "image 420" }
+      ]
+    },
+    {
+      layoutKey: "LAYOUT_07",
+      channelPresetId: "kakao-750x422",
+      templateFrameName: "\uCE74\uCE74\uC624_750_\uC18C\uACE0\uAE30\uC7A5\uC870\uB9BC130_5",
+      templateFrameNodeId: "69:2322",
+      slotBindings: [
+        { slotKey: "slot_1", layerName: "image 418" },
+        { slotKey: "slot_2", layerName: "image 419" },
+        { slotKey: "slot_3", layerName: "image 420" },
+        { slotKey: "slot_4", layerName: "image 421" },
+        { slotKey: "slot_5", layerName: "image 422" }
+      ]
+    },
+    // --- 11st-720x360 (wide-2x1) ---
+    // home-and-shopping/jasondeal(wide-16x9)과 달리 wide-2x1 채널은 11번가 하나뿐이라
+    // 다른 채널과의 교차 재사용은 확인되지 않았다(layouts.ts 주석 참고) — 11번가 실제
+    // frame만 바인딩한다.
+    {
+      layoutKey: "LAYOUT_08",
+      channelPresetId: "11st-720x360",
+      templateFrameName: "11\uBC88\uAC00_720_\uC18C\uACE0\uAE30\uC7A5\uC870\uB9BC130_1",
+      templateFrameNodeId: "69:1952",
+      slotBindings: [{ slotKey: "slot_1", layerName: "image 413" }]
+    },
+    {
+      layoutKey: "LAYOUT_09",
+      channelPresetId: "11st-720x360",
+      templateFrameName: "11\uBC88\uAC00_720_\uC18C\uACE0\uAE30\uC7A5\uC870\uB9BC130_3",
+      templateFrameNodeId: "69:1936",
+      slotBindings: [
+        { slotKey: "slot_1", layerName: "image 412" },
+        { slotKey: "slot_2", layerName: "image 413" },
+        { slotKey: "slot_3", layerName: "image 414" }
+      ]
+    },
+    {
+      layoutKey: "LAYOUT_10",
+      channelPresetId: "11st-720x360",
+      templateFrameName: "11\uBC88\uAC00_720_\uC18C\uACE0\uAE30\uC7A5\uC870\uB9BC130_5",
+      templateFrameNodeId: "69:1966",
+      slotBindings: [
+        { slotKey: "slot_1", layerName: "image 412" },
+        { slotKey: "slot_2", layerName: "image 413" },
+        { slotKey: "slot_3", layerName: "image 414" },
+        { slotKey: "slot_4", layerName: "image 415" },
+        { slotKey: "slot_5", layerName: "image 416" }
       ]
     }
   ];
