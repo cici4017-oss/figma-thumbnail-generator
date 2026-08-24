@@ -10,6 +10,7 @@ export * from './engine/assignSlots';
 export * from './engine/generateFallbackLayout';
 export * from './engine/resolveLayout';
 export * from './engine/composePlan';
+export * from './engine/composeChannelOutputs';
 export * from './data/channelPresets';
 export * from './data/layouts';
 export * from './data/channels';

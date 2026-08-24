@@ -283,9 +283,203 @@
 
   // ../core/src/data/channelPresets.ts
   var CHANNEL_PRESETS = [
+    // --- 복수 규격 채널 (square + wide) ---
     {
       id: "naver-1000x1000",
       channelId: "naver",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "kakao-1000x1000",
+      channelId: "kakao",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "kakao-750x422",
+      channelId: "kakao",
+      frameWidth: 750,
+      frameHeight: 422,
+      aspectRatioFamily: "wide",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "home-and-shopping-1000x1000",
+      channelId: "home-and-shopping",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "home-and-shopping-640x350",
+      channelId: "home-and-shopping",
+      frameWidth: 640,
+      frameHeight: 350,
+      aspectRatioFamily: "wide",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "toss-1000x1000",
+      channelId: "toss",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "toss-600x240",
+      channelId: "toss",
+      frameWidth: 600,
+      frameHeight: 240,
+      aspectRatioFamily: "wide",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "jasondeal-1000x1000",
+      channelId: "jasondeal",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "jasondeal-720x400",
+      channelId: "jasondeal",
+      frameWidth: 720,
+      frameHeight: 400,
+      aspectRatioFamily: "wide",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "11st-1000x1000",
+      channelId: "11st",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "11st-720x360",
+      channelId: "11st",
+      frameWidth: 720,
+      frameHeight: 360,
+      aspectRatioFamily: "wide",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    // --- 단일 규격(1000x1000) 채널 — 프레임 데이터상 예외 없이 정사각형만 확인됨 ---
+    {
+      id: "ssg-1000x1000",
+      channelId: "ssg",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "auction-1000x1000",
+      channelId: "auction",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "gmarket-1000x1000",
+      channelId: "gmarket",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "sk-stoa-1000x1000",
+      channelId: "sk-stoa",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "skt-deal-1000x1000",
+      channelId: "skt-deal",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "coupang-1000x1000",
+      channelId: "coupang",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "aliexpress-1000x1000",
+      channelId: "aliexpress",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "ns-shopping-1000x1000",
+      channelId: "ns-shopping",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      // 표본 2개(반례 없음, 신뢰도 낮음) — 추가 확인 전까지는 사용에 주의
+      id: "alwayz-1000x1000",
+      channelId: "alwayz",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      // 표본 2개(반례 없음, 신뢰도 낮음) — 추가 확인 전까지는 사용에 주의
+      id: "eland-mall-1000x1000",
+      channelId: "eland-mall",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      // 표본 2개(반례 없음, 신뢰도 낮음) — 추가 확인 전까지는 사용에 주의
+      id: "lotte-on-1000x1000",
+      channelId: "lotte-on",
       frameWidth: 1e3,
       frameHeight: 1e3,
       aspectRatioFamily: "square",

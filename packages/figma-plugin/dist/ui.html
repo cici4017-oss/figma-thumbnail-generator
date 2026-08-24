@@ -30,6 +30,18 @@
     if (typeof require !== "undefined") return require.apply(this, arguments);
     throw Error('Dynamic require of "' + x + '" is not supported');
   });
+  var __objRest = (source, exclude) => {
+    var target = {};
+    for (var prop in source)
+      if (__hasOwnProp.call(source, prop) && exclude.indexOf(prop) < 0)
+        target[prop] = source[prop];
+    if (source != null && __getOwnPropSymbols)
+      for (var prop of __getOwnPropSymbols(source)) {
+        if (exclude.indexOf(prop) < 0 && __propIsEnum.call(source, prop))
+          target[prop] = source[prop];
+      }
+    return target;
+  };
   var __commonJS = (cb, mod) => function __require2() {
     return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
   };
@@ -48602,9 +48614,203 @@
 
   // ../core/src/data/channelPresets.ts
   var CHANNEL_PRESETS = [
+    // --- 복수 규격 채널 (square + wide) ---
     {
       id: "naver-1000x1000",
       channelId: "naver",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "kakao-1000x1000",
+      channelId: "kakao",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "kakao-750x422",
+      channelId: "kakao",
+      frameWidth: 750,
+      frameHeight: 422,
+      aspectRatioFamily: "wide",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "home-and-shopping-1000x1000",
+      channelId: "home-and-shopping",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "home-and-shopping-640x350",
+      channelId: "home-and-shopping",
+      frameWidth: 640,
+      frameHeight: 350,
+      aspectRatioFamily: "wide",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "toss-1000x1000",
+      channelId: "toss",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "toss-600x240",
+      channelId: "toss",
+      frameWidth: 600,
+      frameHeight: 240,
+      aspectRatioFamily: "wide",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "jasondeal-1000x1000",
+      channelId: "jasondeal",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "jasondeal-720x400",
+      channelId: "jasondeal",
+      frameWidth: 720,
+      frameHeight: 400,
+      aspectRatioFamily: "wide",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "11st-1000x1000",
+      channelId: "11st",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "11st-720x360",
+      channelId: "11st",
+      frameWidth: 720,
+      frameHeight: 360,
+      aspectRatioFamily: "wide",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    // --- 단일 규격(1000x1000) 채널 — 프레임 데이터상 예외 없이 정사각형만 확인됨 ---
+    {
+      id: "ssg-1000x1000",
+      channelId: "ssg",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "auction-1000x1000",
+      channelId: "auction",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "gmarket-1000x1000",
+      channelId: "gmarket",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "sk-stoa-1000x1000",
+      channelId: "sk-stoa",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "skt-deal-1000x1000",
+      channelId: "skt-deal",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "coupang-1000x1000",
+      channelId: "coupang",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "aliexpress-1000x1000",
+      channelId: "aliexpress",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      id: "ns-shopping-1000x1000",
+      channelId: "ns-shopping",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      // 표본 2개(반례 없음, 신뢰도 낮음) — 추가 확인 전까지는 사용에 주의
+      id: "alwayz-1000x1000",
+      channelId: "alwayz",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      // 표본 2개(반례 없음, 신뢰도 낮음) — 추가 확인 전까지는 사용에 주의
+      id: "eland-mall-1000x1000",
+      channelId: "eland-mall",
+      frameWidth: 1e3,
+      frameHeight: 1e3,
+      aspectRatioFamily: "square",
+      storageLabelSupported: true,
+      badgeSupported: true
+    },
+    {
+      // 표본 2개(반례 없음, 신뢰도 낮음) — 추가 확인 전까지는 사용에 주의
+      id: "lotte-on-1000x1000",
+      channelId: "lotte-on",
       frameWidth: 1e3,
       frameHeight: 1e3,
       aspectRatioFamily: "square",
@@ -48985,6 +49191,27 @@
     };
   }
 
+  // ../core/src/engine/composeChannelOutputs.ts
+  function composeChannelOutputs(request, deps) {
+    const _a = request, { channelId } = _a, requestWithoutChannel = __objRest(_a, ["channelId"]);
+    const presets = deps.channelPresets.filter((p) => p.channelId === channelId);
+    if (presets.length === 0) {
+      return {
+        ok: false,
+        reason: "CHANNEL_NOT_FOUND",
+        message: `channelId "${channelId}"\uC5D0 \uB4F1\uB85D\uB41C ChannelPreset\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.`
+      };
+    }
+    const outputs = presets.map((preset) => ({
+      channelPresetId: preset.id,
+      aspectRatioFamily: preset.aspectRatioFamily,
+      frameWidth: preset.frameWidth,
+      frameHeight: preset.frameHeight,
+      result: composePlan(__spreadProps(__spreadValues({}, requestWithoutChannel), { channelPresetId: preset.id }), deps)
+    }));
+    return { ok: true, outputs };
+  }
+
   // ../core/src/import/composeBatch.ts
   function productSummary(wo) {
     return wo.lines.map((l) => {
@@ -48996,8 +49223,12 @@
     var _a, _b;
     return (_b = (_a = layouts.find((l) => l.layoutKey === layoutKey)) == null ? void 0 : _a.arrangementKind) != null ? _b : null;
   }
-  function composeRow(wo, products, layouts) {
-    var _a;
+  function worstStatus(statuses) {
+    if (statuses.some((s) => s === "error")) return "error";
+    if (statuses.some((s) => s === "reviewRequired")) return "reviewRequired";
+    return "ready";
+  }
+  function composeRow(wo, products, channelPresets, layouts) {
     const base = {
       workId: wo.workId,
       channelId: wo.channelId,
@@ -49008,66 +49239,72 @@
     };
     if (wo.status !== "valid") {
       return __spreadProps(__spreadValues({}, base), {
-        status: wo.status,
-        layoutKey: null,
-        arrangementFamily: null,
-        layoutSource: null,
-        reason: wo.issues.map((i) => i.message).join(" / ") || null
-      });
-    }
-    const channelPreset = CHANNEL_PRESETS.find((p) => p.channelId === wo.channelId);
-    if (!channelPreset) {
-      return __spreadProps(__spreadValues({}, base), {
-        status: "error",
-        layoutKey: null,
-        arrangementFamily: null,
-        layoutSource: null,
-        reason: `\uCC44\uB110 "${(_a = wo.channelLabel) != null ? _a : wo.channelId}"\uC5D0 \uB300\uD55C \uCD9C\uB825 \uADDC\uACA9(channelPreset)\uC774 \uC544\uC9C1 \uB4F1\uB85D\uB418\uC5B4 \uC788\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.`
+        overallStatus: wo.status,
+        parserReason: wo.issues.map((i) => i.message).join(" / ") || null,
+        outputs: []
       });
     }
     const items = wo.lines.map((l) => ({
       productId: l.productCode,
       quantity: l.quantity
     }));
-    const result = composePlan(
+    const fanout = composeChannelOutputs(
       {
         items,
-        channelPresetId: channelPreset.id,
+        channelId: wo.channelId,
         options: wo.badge === null ? void 0 : { badge: { enabled: wo.badge } }
       },
-      { products, channelPresets: CHANNEL_PRESETS, layouts }
+      { products, channelPresets, layouts }
     );
-    if (result.ok) {
-      const arrangementFamily = result.plan.layoutSource.kind === "generated" ? result.plan.layoutSource.params.familyId : arrangementLabelForLayoutKey(result.plan.layoutKey, layouts);
-      return __spreadProps(__spreadValues({}, base), {
-        status: result.plan.reviewRequired ? "reviewRequired" : "ready",
-        layoutKey: result.plan.layoutKey,
-        arrangementFamily,
-        layoutSource: result.plan.layoutSource.kind,
-        reason: result.plan.reviewRequired ? "\uAC80\uC99D\uB41C(verified) Layout\uC774 \uC5C6\uC5B4 \uBC30\uCE58 family \uACF5\uC2DD\uC73C\uB85C \uC790\uB3D9 \uC0DD\uC131\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uC2E4\uC81C \uC0AC\uC6A9 \uC804 \uAC80\uD1A0\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4." : null
-      });
+    if (!fanout.ok) {
+      return __spreadProps(__spreadValues({}, base), { overallStatus: "error", parserReason: fanout.message, outputs: [] });
     }
+    const outputs = fanout.outputs.map((output) => {
+      const shared = {
+        channelPresetId: output.channelPresetId,
+        aspectRatioFamily: output.aspectRatioFamily,
+        frameWidth: output.frameWidth,
+        frameHeight: output.frameHeight
+      };
+      if (output.result.ok) {
+        const { plan } = output.result;
+        const arrangementFamily = plan.layoutSource.kind === "generated" ? plan.layoutSource.params.familyId : arrangementLabelForLayoutKey(plan.layoutKey, layouts);
+        return __spreadProps(__spreadValues({}, shared), {
+          status: plan.reviewRequired ? "reviewRequired" : "ready",
+          layoutKey: plan.layoutKey,
+          arrangementFamily,
+          layoutSource: plan.layoutSource.kind,
+          reason: plan.reviewRequired ? "\uAC80\uC99D\uB41C(verified) Layout\uC774 \uC5C6\uC5B4 \uBC30\uCE58 family \uACF5\uC2DD\uC73C\uB85C \uC790\uB3D9 \uC0DD\uC131\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uC2E4\uC81C \uC0AC\uC6A9 \uC804 \uAC80\uD1A0\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4." : null
+        });
+      }
+      return __spreadProps(__spreadValues({}, shared), {
+        status: output.result.reviewRequired ? "reviewRequired" : "error",
+        layoutKey: null,
+        arrangementFamily: null,
+        layoutSource: null,
+        reason: output.result.message
+      });
+    });
     return __spreadProps(__spreadValues({}, base), {
-      status: result.reviewRequired ? "reviewRequired" : "error",
-      layoutKey: null,
-      arrangementFamily: null,
-      layoutSource: null,
-      reason: result.message
+      overallStatus: worstStatus(outputs.map((o) => o.status)),
+      parserReason: null,
+      outputs
     });
   }
   function composeBatchPreview(batch, deps = {}) {
-    var _a, _b;
+    var _a, _b, _c;
     const products = (_a = deps.products) != null ? _a : DOMAIN_PRODUCTS;
-    const layouts = (_b = deps.layouts) != null ? _b : LAYOUTS;
-    const rows = batch.workOrders.map((wo) => composeRow(wo, products, layouts));
+    const channelPresets = (_b = deps.channelPresets) != null ? _b : CHANNEL_PRESETS;
+    const layouts = (_c = deps.layouts) != null ? _c : LAYOUTS;
+    const rows = batch.workOrders.map((wo) => composeRow(wo, products, channelPresets, layouts));
     return {
       sourceFileName: batch.sourceFileName,
       rows,
       summary: {
         total: rows.length,
-        ready: rows.filter((r) => r.status === "ready").length,
-        reviewRequired: rows.filter((r) => r.status === "reviewRequired").length,
-        error: rows.filter((r) => r.status === "error").length
+        ready: rows.filter((r) => r.overallStatus === "ready").length,
+        reviewRequired: rows.filter((r) => r.overallStatus === "reviewRequired").length,
+        error: rows.filter((r) => r.overallStatus === "error").length
       }
     };
   }
@@ -49085,10 +49322,11 @@
     error: "#c0392b"
   };
   var SOURCE_LABEL = {
-    verified: "verified",
-    generated: "generated"
+    verified: "VERIFIED",
+    generated: "GENERATED"
   };
   var cellStyle = { border: "1px solid #eee", padding: "4px 6px", verticalAlign: "top" };
+  var groupCellStyle = __spreadProps(__spreadValues({}, cellStyle), { background: "#fafafa", fontWeight: 600 });
   function BatchPreview() {
     var _a;
     const [preview, setPreview] = (0, import_react.useState)(null);
@@ -49109,9 +49347,9 @@
         setError(`\uC5D1\uC140\uC744 \uC77D\uB294 \uC911 \uC624\uB958: ${err.message}`);
       }
     };
-    const visibleRows = (_a = preview == null ? void 0 : preview.rows.filter((r) => filter === "all" || r.status === filter)) != null ? _a : [];
+    const visibleRows = (_a = preview == null ? void 0 : preview.rows.filter((r) => filter === "all" || r.overallStatus === filter)) != null ? _a : [];
     return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { style: { margin: "4px 0", color: "#666" }, children: "\uD45C\uC900 \uC694\uCCAD\uC11C(01_\uC791\uC5C5\uC694\uCCAD)\uB97C \uC120\uD0DD\uD558\uBA74 \uC791\uC5C5ID \uAE30\uC900\uC73C\uB85C \uBB36\uC5B4 Layout \uC120\uD0DD(verified/generated fallback)\uAE4C\uC9C0 \uC2DC\uBBAC\uB808\uC774\uC158\uD55C \uBBF8\uB9AC\uBCF4\uAE30\uB97C \uBCF4\uC5EC\uC90D\uB2C8\uB2E4. \uC544\uC9C1 \uC2E4\uC81C Figma \uB80C\uB354\uB9C1\uACFC\uB294 \uC5F0\uACB0\uB418\uC5B4 \uC788\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4(mock \uAE30\uBC18 \uAC80\uC99D \uB2E8\uACC4)." }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { style: { margin: "4px 0", color: "#666" }, children: "\uD45C\uC900 \uC694\uCCAD\uC11C(01_\uC791\uC5C5\uC694\uCCAD)\uB97C \uC120\uD0DD\uD558\uBA74 \uC791\uC5C5ID \uAE30\uC900\uC73C\uB85C \uBB36\uACE0, \uCC44\uB110\uC5D0 \uB4F1\uB85D\uB41C \uCD9C\uB825 \uADDC\uACA9(preset)\uB9C8\uB2E4 Layout \uC120\uD0DD(verified/generated fallback)\uAE4C\uC9C0 \uC2DC\uBBAC\uB808\uC774\uC158\uD55C \uBBF8\uB9AC\uBCF4\uAE30\uB97C \uBCF4\uC5EC\uC90D\uB2C8\uB2E4. \uD55C \uCC44\uB110\uC774 \uC5EC\uB7EC \uADDC\uACA9(\uC608: \uCE74\uCE74\uC624 1000\xD71000 + 750\xD7422)\uC744 \uAC00\uC9C0\uBA74 \uC791\uC5C5ID \uD558\uB098\uAC00 \uADDC\uACA9 \uC218\uB9CC\uD07C \uCD9C\uB825\uC73C\uB85C \uB098\uB258\uACE0, \uAC01 \uCD9C\uB825\uC740 \uC11C\uB85C \uB3C5\uB9BD\uC801\uC73C\uB85C \uD310\uC815\uB429\uB2C8\uB2E4. \uC544\uC9C1 \uC2E4\uC81C Figma \uB80C\uB354\uB9C1\uACFC\uB294 \uC5F0\uACB0\uB418\uC5B4 \uC788\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4(mock \uAE30\uBC18 \uAC80\uC99D \uB2E8\uACC4)." }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "file", accept: ".xlsx", onChange: onFileChange }),
       error && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { style: { color: STATUS_COLOR.error }, children: error }),
       preview && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
@@ -49138,12 +49376,13 @@
           },
           s
         )) }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { maxHeight: 360, overflow: "auto", border: "1px solid #ddd" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("table", { style: { width: "100%", borderCollapse: "collapse", fontSize: 11 }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { maxHeight: 420, overflow: "auto", border: "1px solid #ddd" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("table", { style: { width: "100%", borderCollapse: "collapse", fontSize: 11 }, children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("tr", { style: { position: "sticky", top: 0, background: "#f5f5f5" }, children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { style: cellStyle, children: "\uC791\uC5C5ID" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { style: cellStyle, children: "\uCC44\uB110" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { style: cellStyle, children: "\uC0C1\uD488 \uAD6C\uC131" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { style: cellStyle, children: "\uCD1D\uC218\uB7C9" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { style: cellStyle, children: "\uCD9C\uB825 \uADDC\uACA9" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { style: cellStyle, children: "layoutKey" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { style: cellStyle, children: "family" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { style: cellStyle, children: "source" }),
@@ -49151,18 +49390,43 @@
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { style: cellStyle, children: "\uC624\uB958/\uAC80\uD1A0 \uC0AC\uC720" })
           ] }) }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("tbody", { children: visibleRows.map((row) => {
-            var _a2, _b, _c, _d, _e;
-            return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("tr", { children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: cellStyle, children: row.workId }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: cellStyle, children: (_b = (_a2 = row.channelLabel) != null ? _a2 : row.channelId) != null ? _b : "(\uBD88\uC77C\uCE58/\uBBF8\uD655\uC778)" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: cellStyle, children: row.productSummary }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: cellStyle, children: row.totalQuantity }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: cellStyle, children: (_c = row.layoutKey) != null ? _c : "-" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: cellStyle, children: (_d = row.arrangementFamily) != null ? _d : "-" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: cellStyle, children: row.layoutSource ? SOURCE_LABEL[row.layoutSource] : "-" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: __spreadProps(__spreadValues({}, cellStyle), { color: STATUS_COLOR[row.status], fontWeight: 600 }), children: STATUS_LABEL[row.status] }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: cellStyle, children: (_e = row.reason) != null ? _e : "" })
-            ] }, row.workId);
+            var _a2, _b, _c;
+            const lineCount = Math.max(row.outputs.length, 1);
+            return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_react.default.Fragment, { children: row.outputs.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("tr", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: groupCellStyle, children: row.workId }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: groupCellStyle, children: (_b = (_a2 = row.channelLabel) != null ? _a2 : row.channelId) != null ? _b : "(\uBD88\uC77C\uCE58/\uBBF8\uD655\uC778)" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: groupCellStyle, children: row.productSummary }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: groupCellStyle, children: row.totalQuantity }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: cellStyle, colSpan: 5, children: "(\uCC44\uB110 fan-out \uBBF8\uC2DC\uB3C4)" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("td", { style: __spreadProps(__spreadValues({}, cellStyle), { color: STATUS_COLOR[row.overallStatus], fontWeight: 600 }), children: [
+                STATUS_LABEL[row.overallStatus],
+                " \u2014 ",
+                (_c = row.parserReason) != null ? _c : ""
+              ] })
+            ] }) : row.outputs.map((output, i) => {
+              var _a3, _b2, _c2, _d, _e;
+              return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("tr", { children: [
+                i === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: groupCellStyle, rowSpan: lineCount, children: row.workId }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: groupCellStyle, rowSpan: lineCount, children: (_b2 = (_a3 = row.channelLabel) != null ? _a3 : row.channelId) != null ? _b2 : "(\uBD88\uC77C\uCE58/\uBBF8\uD655\uC778)" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: groupCellStyle, rowSpan: lineCount, children: row.productSummary }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: groupCellStyle, rowSpan: lineCount, children: row.totalQuantity })
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("td", { style: cellStyle, children: [
+                  output.frameWidth,
+                  "\xD7",
+                  output.frameHeight,
+                  " (",
+                  output.aspectRatioFamily,
+                  ")"
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: cellStyle, children: (_c2 = output.layoutKey) != null ? _c2 : "-" }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: cellStyle, children: (_d = output.arrangementFamily) != null ? _d : "-" }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: cellStyle, children: output.layoutSource ? SOURCE_LABEL[output.layoutSource] : "-" }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: __spreadProps(__spreadValues({}, cellStyle), { color: STATUS_COLOR[output.status], fontWeight: 600 }), children: STATUS_LABEL[output.status] }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { style: cellStyle, children: (_e = output.reason) != null ? _e : "" })
+              ] }, `${row.workId}-${output.channelPresetId}`);
+            }) }, row.workId);
           }) })
         ] }) })
       ] })

@@ -21,11 +21,12 @@ const STATUS_COLOR: Record<BatchPreviewStatus, string> = {
 };
 
 const SOURCE_LABEL: Record<'verified' | 'generated', string> = {
-  verified: 'verified',
-  generated: 'generated',
+  verified: 'VERIFIED',
+  generated: 'GENERATED',
 };
 
 const cellStyle: React.CSSProperties = { border: '1px solid #eee', padding: '4px 6px', verticalAlign: 'top' };
+const groupCellStyle: React.CSSProperties = { ...cellStyle, background: '#fafafa', fontWeight: 600 };
 
 export function BatchPreview() {
   const [preview, setPreview] = useState<BatchPreviewResult | null>(null);
@@ -47,15 +48,19 @@ export function BatchPreview() {
     }
   };
 
+  // 필터는 작업ID(row) 단위 요약 상태(overallStatus) 기준 — 개별 output의 상태는
+  // 항상 각 output 줄에 그대로 표시된다(요약이 개별 상태를 덮어쓰지 않는다).
   const visibleRows: BatchPreviewRow[] =
-    preview?.rows.filter((r) => filter === 'all' || r.status === filter) ?? [];
+    preview?.rows.filter((r) => filter === 'all' || r.overallStatus === filter) ?? [];
 
   return (
     <div>
       <p style={{ margin: '4px 0', color: '#666' }}>
-        표준 요청서(01_작업요청)를 선택하면 작업ID 기준으로 묶어 Layout 선택(verified/generated
-        fallback)까지 시뮬레이션한 미리보기를 보여줍니다. 아직 실제 Figma 렌더링과는 연결되어
-        있지 않습니다(mock 기반 검증 단계).
+        표준 요청서(01_작업요청)를 선택하면 작업ID 기준으로 묶고, 채널에 등록된 출력
+        규격(preset)마다 Layout 선택(verified/generated fallback)까지 시뮬레이션한
+        미리보기를 보여줍니다. 한 채널이 여러 규격(예: 카카오 1000×1000 + 750×422)을 가지면
+        작업ID 하나가 규격 수만큼 출력으로 나뉘고, 각 출력은 서로 독립적으로 판정됩니다.
+        아직 실제 Figma 렌더링과는 연결되어 있지 않습니다(mock 기반 검증 단계).
       </p>
       <input type="file" accept=".xlsx" onChange={onFileChange} />
 
@@ -83,7 +88,7 @@ export function BatchPreview() {
             ))}
           </div>
 
-          <div style={{ maxHeight: 360, overflow: 'auto', border: '1px solid #ddd' }}>
+          <div style={{ maxHeight: 420, overflow: 'auto', border: '1px solid #ddd' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
               <thead>
                 <tr style={{ position: 'sticky', top: 0, background: '#f5f5f5' }}>
@@ -91,6 +96,7 @@ export function BatchPreview() {
                   <th style={cellStyle}>채널</th>
                   <th style={cellStyle}>상품 구성</th>
                   <th style={cellStyle}>총수량</th>
+                  <th style={cellStyle}>출력 규격</th>
                   <th style={cellStyle}>layoutKey</th>
                   <th style={cellStyle}>family</th>
                   <th style={cellStyle}>source</th>
@@ -99,21 +105,59 @@ export function BatchPreview() {
                 </tr>
               </thead>
               <tbody>
-                {visibleRows.map((row) => (
-                  <tr key={row.workId}>
-                    <td style={cellStyle}>{row.workId}</td>
-                    <td style={cellStyle}>{row.channelLabel ?? row.channelId ?? '(불일치/미확인)'}</td>
-                    <td style={cellStyle}>{row.productSummary}</td>
-                    <td style={cellStyle}>{row.totalQuantity}</td>
-                    <td style={cellStyle}>{row.layoutKey ?? '-'}</td>
-                    <td style={cellStyle}>{row.arrangementFamily ?? '-'}</td>
-                    <td style={cellStyle}>{row.layoutSource ? SOURCE_LABEL[row.layoutSource] : '-'}</td>
-                    <td style={{ ...cellStyle, color: STATUS_COLOR[row.status], fontWeight: 600 }}>
-                      {STATUS_LABEL[row.status]}
-                    </td>
-                    <td style={cellStyle}>{row.reason ?? ''}</td>
-                  </tr>
-                ))}
+                {visibleRows.map((row) => {
+                  // parser 단계에서 이미 확정되어 outputs가 없는 경우(비고/오류) 한 줄만 표시
+                  const lineCount = Math.max(row.outputs.length, 1);
+                  return (
+                    <React.Fragment key={row.workId}>
+                      {row.outputs.length === 0 ? (
+                        <tr>
+                          <td style={groupCellStyle}>{row.workId}</td>
+                          <td style={groupCellStyle}>{row.channelLabel ?? row.channelId ?? '(불일치/미확인)'}</td>
+                          <td style={groupCellStyle}>{row.productSummary}</td>
+                          <td style={groupCellStyle}>{row.totalQuantity}</td>
+                          <td style={cellStyle} colSpan={5}>
+                            (채널 fan-out 미시도)
+                          </td>
+                          <td style={{ ...cellStyle, color: STATUS_COLOR[row.overallStatus], fontWeight: 600 }}>
+                            {STATUS_LABEL[row.overallStatus]} — {row.parserReason ?? ''}
+                          </td>
+                        </tr>
+                      ) : (
+                        row.outputs.map((output, i) => (
+                          <tr key={`${row.workId}-${output.channelPresetId}`}>
+                            {i === 0 && (
+                              <>
+                                <td style={groupCellStyle} rowSpan={lineCount}>
+                                  {row.workId}
+                                </td>
+                                <td style={groupCellStyle} rowSpan={lineCount}>
+                                  {row.channelLabel ?? row.channelId ?? '(불일치/미확인)'}
+                                </td>
+                                <td style={groupCellStyle} rowSpan={lineCount}>
+                                  {row.productSummary}
+                                </td>
+                                <td style={groupCellStyle} rowSpan={lineCount}>
+                                  {row.totalQuantity}
+                                </td>
+                              </>
+                            )}
+                            <td style={cellStyle}>
+                              {output.frameWidth}×{output.frameHeight} ({output.aspectRatioFamily})
+                            </td>
+                            <td style={cellStyle}>{output.layoutKey ?? '-'}</td>
+                            <td style={cellStyle}>{output.arrangementFamily ?? '-'}</td>
+                            <td style={cellStyle}>{output.layoutSource ? SOURCE_LABEL[output.layoutSource] : '-'}</td>
+                            <td style={{ ...cellStyle, color: STATUS_COLOR[output.status], fontWeight: 600 }}>
+                              {STATUS_LABEL[output.status]}
+                            </td>
+                            <td style={cellStyle}>{output.reason ?? ''}</td>
+                          </tr>
+                        ))
+                      )}
+                    </React.Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </div>

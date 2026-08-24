@@ -35,6 +35,10 @@ async function buildSampleWorkbook(): Promise<ArrayBuffer> {
   // 4') 잘못된 상품코드(상품목록에 없는 상품명) error 케이스
   ws.addRow(['WO-P5', 1, '간편식', '네이버', '없는상품', '', 1, 'X', '']);
 
+  // 5) 복수 규격 채널(카카오) fan-out 케이스: 작업ID 1개가 채널에 등록된 preset 수(2개)만큼
+  //    output으로 fan-out되어야 함
+  ws.addRow(['WO-P6', 1, '간편식', '카카오', '소고기장조림', 'SIMPLE_BEEF_JANGJORIM_130', 3, 'X', '']);
+
   return wb.xlsx.writeBuffer() as unknown as Promise<ArrayBuffer>;
 }
 
@@ -50,45 +54,71 @@ async function main() {
   const batch = parseWorkOrderRows(rawRows, 'test.xlsx');
   const preview = composeBatchPreview(batch);
 
-  assert.equal(preview.rows.length, 5);
-  assert.deepEqual(preview.summary, { total: 5, ready: 1, reviewRequired: 2, error: 2 });
+  assert.equal(preview.rows.length, 6);
+  assert.deepEqual(preview.summary, { total: 6, ready: 1, reviewRequired: 3, error: 2 });
 
-  // 1) 단일 상품 verified
+  // 1) 단일 상품 verified -> 네이버는 preset 1개뿐이므로 output도 1개
   const p1 = byId(preview.rows, 'WO-P1');
-  assert.equal(p1.status, 'ready');
-  assert.equal(p1.layoutKey, 'LAYOUT_02');
-  assert.equal(p1.arrangementFamily, 'triple-cascade');
-  assert.equal(p1.layoutSource, 'verified');
+  assert.equal(p1.overallStatus, 'ready');
+  assert.equal(p1.parserReason, null);
+  assert.equal(p1.outputs.length, 1);
+  assert.equal(p1.outputs[0].channelPresetId, 'naver-1000x1000');
+  assert.equal(p1.outputs[0].status, 'ready');
+  assert.equal(p1.outputs[0].layoutKey, 'LAYOUT_02');
+  assert.equal(p1.outputs[0].arrangementFamily, 'triple-cascade');
+  assert.equal(p1.outputs[0].layoutSource, 'verified');
   assert.equal(p1.totalQuantity, 3);
-  assert.equal(p1.reason, null);
+  assert.equal(p1.outputs[0].reason, null);
 
   // 2) A×2+B×3+C×4 혼합 -> generated fallback (pyramid-stack family, 9슬롯), reviewRequired
   const p2 = byId(preview.rows, 'WO-P2');
-  assert.equal(p2.status, 'reviewRequired');
-  assert.equal(p2.layoutKey, 'GENERATED_PYRAMID-STACK_9');
-  assert.equal(p2.arrangementFamily, 'pyramid-stack');
-  assert.equal(p2.layoutSource, 'generated');
+  assert.equal(p2.overallStatus, 'reviewRequired');
+  assert.equal(p2.outputs.length, 1);
+  assert.equal(p2.outputs[0].layoutKey, 'GENERATED_PYRAMID-STACK_9');
+  assert.equal(p2.outputs[0].arrangementFamily, 'pyramid-stack');
+  assert.equal(p2.outputs[0].layoutSource, 'generated');
   assert.equal(p2.totalQuantity, 9);
-  assert.ok(p2.reason && p2.reason.includes('자동 생성'));
+  assert.ok(p2.outputs[0].reason && p2.outputs[0].reason.includes('자동 생성'));
 
-  // 3) 비고 -> reviewRequired (parser 단계 확정, 임의 생성 시도 안 함)
+  // 3) 비고 -> reviewRequired (parser 단계 확정, fan-out/생성 시도 안 함 -> outputs 없음)
   const p3 = byId(preview.rows, 'WO-P3');
-  assert.equal(p3.status, 'reviewRequired');
-  assert.equal(p3.layoutKey, null);
-  assert.equal(p3.layoutSource, null);
-  assert.ok(p3.reason && p3.reason.includes('비고'));
+  assert.equal(p3.overallStatus, 'reviewRequired');
+  assert.equal(p3.outputs.length, 0);
+  assert.ok(p3.parserReason && p3.parserReason.includes('비고'));
 
-  // 4) 잘못된 수량 -> error
+  // 4) 잘못된 수량 -> error (parser 단계 확정, outputs 없음)
   const p4 = byId(preview.rows, 'WO-P4');
-  assert.equal(p4.status, 'error');
-  assert.equal(p4.layoutKey, null);
-  assert.ok(p4.reason && p4.reason.includes('수량'));
+  assert.equal(p4.overallStatus, 'error');
+  assert.equal(p4.outputs.length, 0);
+  assert.ok(p4.parserReason && p4.parserReason.includes('수량'));
 
   // 4') 잘못된 상품코드(미등록 상품명) -> error
   const p5 = byId(preview.rows, 'WO-P5');
-  assert.equal(p5.status, 'error');
-  assert.equal(p5.layoutKey, null);
-  assert.ok(p5.reason && p5.reason.includes('상품코드'));
+  assert.equal(p5.overallStatus, 'error');
+  assert.equal(p5.outputs.length, 0);
+  assert.ok(p5.parserReason && p5.parserReason.includes('상품코드'));
+
+  // 5) 복수 규격 채널(카카오) fan-out -> output 2개(square/wide), 사용자가 준 예시와 동일한 패턴:
+  //    square(1000x1000)는 LAYOUT_02(채널 무관, aspectRatioFamily 기준 재사용)로 verified/ready,
+  //    wide(750x422)는 검증된 Layout이 없어 generated/reviewRequired — 한쪽이 generated라고
+  //    다른 쪽까지 reviewRequired로 끌어내리지 않는다(#7).
+  const p6 = byId(preview.rows, 'WO-P6');
+  assert.equal(p6.channelLabel, '카카오');
+  assert.equal(p6.outputs.length, 2);
+  const byPreset = new Map(p6.outputs.map((o) => [o.channelPresetId, o]));
+  const kakaoSquare = byPreset.get('kakao-1000x1000');
+  const kakaoWide = byPreset.get('kakao-750x422');
+  assert.ok(kakaoSquare && kakaoWide);
+  assert.equal(kakaoSquare!.aspectRatioFamily, 'square');
+  assert.equal(kakaoWide!.aspectRatioFamily, 'wide');
+  assert.equal(kakaoSquare!.status, 'ready');
+  assert.equal(kakaoSquare!.layoutSource, 'verified');
+  assert.equal(kakaoSquare!.layoutKey, 'LAYOUT_02');
+  assert.equal(kakaoWide!.status, 'reviewRequired');
+  assert.equal(kakaoWide!.layoutSource, 'generated');
+  // 작업ID 요약 상태는 outputs 중 최악의 상태(reviewRequired)를 따르지만, 이는 필터용
+  // 요약일 뿐 square output 자체의 status('ready')는 그대로 유지된다.
+  assert.equal(p6.overallStatus, 'reviewRequired');
 
   console.log('composeBatch.test.ts: 모든 검증 통과');
 }
