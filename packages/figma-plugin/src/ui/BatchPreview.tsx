@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
+import { DOMAIN_PRODUCTS, CHANNEL_PRESETS, LAYOUTS } from '@thumbnail-generator/core';
 import {
   readWorkOrderSheet,
   parseWorkOrderRows,
   composeBatchPreview,
+  type BatchGenerationRequest,
   type BatchPreviewResult,
   type BatchPreviewRow,
   type BatchPreviewOutput,
   type BatchPreviewStatus,
 } from '@thumbnail-generator/core/import';
 import { checkRenderability } from '../renderPreflight';
+import { renderBatch, type BatchRenderResult } from '../batchRenderer';
 
 const STATUS_LABEL: Record<BatchPreviewStatus, string> = {
   ready: '생성가능',
@@ -53,21 +56,46 @@ const groupCellStyle: React.CSSProperties = { ...cellStyle, background: '#fafafa
 
 export function BatchPreview() {
   const [preview, setPreview] = useState<BatchPreviewResult | null>(null);
+  const [batch, setBatch] = useState<BatchGenerationRequest | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<BatchPreviewStatus | 'all'>('all');
+  const [includeReviewRequired, setIncludeReviewRequired] = useState(false);
+  const [rendering, setRendering] = useState(false);
+  const [renderResult, setRenderResult] = useState<BatchRenderResult | null>(null);
 
   const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setError(null);
     setPreview(null);
+    setBatch(null);
+    setRenderResult(null);
     try {
       const bytes = await file.arrayBuffer();
       const rows = await readWorkOrderSheet(bytes);
-      const batch = parseWorkOrderRows(rows, file.name);
-      setPreview(composeBatchPreview(batch));
+      const parsedBatch = parseWorkOrderRows(rows, file.name);
+      setBatch(parsedBatch);
+      setPreview(composeBatchPreview(parsedBatch));
     } catch (err) {
       setError(`엑셀을 읽는 중 오류: ${(err as Error).message}`);
+    }
+  };
+
+  const onRenderBatch = async () => {
+    if (!batch) return;
+    setRendering(true);
+    setError(null);
+    try {
+      const result = await renderBatch(
+        batch,
+        { products: DOMAIN_PRODUCTS, channelPresets: CHANNEL_PRESETS, layouts: LAYOUTS },
+        { includeReviewRequired },
+      );
+      setRenderResult(result);
+    } catch (err) {
+      setError(`Figma 생성 중 오류: ${(err as Error).message}`);
+    } finally {
+      setRendering(false);
     }
   };
 
@@ -83,7 +111,9 @@ export function BatchPreview() {
         규격(preset)마다 Layout 선택(verified/generated fallback)까지 시뮬레이션한
         미리보기를 보여줍니다. 한 채널이 여러 규격(예: 카카오 1000×1000 + 750×422)을 가지면
         작업ID 하나가 규격 수만큼 출력으로 나뉘고, 각 출력은 서로 독립적으로 판정됩니다.
-        아직 실제 Figma 렌더링과는 연결되어 있지 않습니다(mock 기반 검증 단계).
+        아래 "Figma에 일괄 생성"은 미리보기 판정을 그대로 다시 계산해 실제로 clone을 만듭니다 —
+        기존 원본/템플릿 프레임은 수정하지 않고, 결과는 AUTO_GENERATED_VERIFIED /
+        AUTO_GENERATED_REVIEW 페이지에 정리됩니다.
       </p>
       <input type="file" accept=".xlsx" onChange={onFileChange} />
 
@@ -102,6 +132,33 @@ export function BatchPreview() {
             {preview.summary.outputStatusSummary.reviewRequired} / 오류{' '}
             {preview.summary.outputStatusSummary.error}
           </p>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '8px 0' }}>
+            <button onClick={onRenderBatch} disabled={rendering || !batch}>
+              {rendering ? '생성 중…' : 'Figma에 일괄 생성'}
+            </button>
+            <label style={{ fontSize: 11, color: '#666' }}>
+              <input
+                type="checkbox"
+                checked={includeReviewRequired}
+                onChange={(e) => setIncludeReviewRequired(e.target.checked)}
+              />{' '}
+              검토필요(reviewRequired)도 생성 (기본 꺼짐 — generated renderer가 지원하는 경우만
+              적용됨)
+            </label>
+          </div>
+
+          {renderResult && (
+            <p style={{ margin: '0 0 8px 0', fontSize: 12 }}>
+              실제 생성 {renderResult.summary.generatedCount}건 / 검토 스킵{' '}
+              {renderResult.summary.skippedReviewRequiredCount}건 / 미지원 스킵{' '}
+              {renderResult.summary.skippedNotRenderableCount}건 / 오류 스킵{' '}
+              {renderResult.summary.skippedErrorCount}건
+              {renderResult.summary.failedCount > 0 && (
+                <span style={{ color: STATUS_COLOR.error }}> / 렌더 실패 {renderResult.summary.failedCount}건</span>
+              )}
+            </p>
+          )}
 
           <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
             {(['all', 'ready', 'reviewRequired', 'error'] as const).map((s) => (

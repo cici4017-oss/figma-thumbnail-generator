@@ -132,6 +132,9 @@ export function installMockFigma(): MockFigmaHandle {
     getNodeById(id: string): MockNode | null {
       return root.findOne((n) => n.id === id);
     },
+    async getNodeByIdAsync(id: string): Promise<MockNode | null> {
+      return root.findOne((n) => n.id === id);
+    },
     createPage(): MockNode {
       const page = new MockNode('PAGE', 'Page');
       root.appendChild(page);
