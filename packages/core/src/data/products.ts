@@ -6,7 +6,8 @@ export interface ProductRegistryEntry {
   productGroup: ProductGroupId;
   brand: string;
   name: string;
-  capacity: string;
+  /** 실제 용량이 확인되지 않았으면 null로 표시한다(추측해서 채우지 않는다). */
+  capacity: string | null;
 }
 
 /**

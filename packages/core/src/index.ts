@@ -1,4 +1,5 @@
 export * from './domain/product';
+export * from './domain/productAsset';
 export * from './domain/channel';
 export * from './domain/thumbnailType';
 export * from './domain/layoutSource';

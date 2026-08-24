@@ -1,5 +1,8 @@
 "use strict";
 (() => {
+  // ../core/src/domain/productAsset.ts
+  var DEFAULT_PRODUCT_ASSET_KIND = "package";
+
   // ../core/src/domain/thumbnailType.ts
   var DEFAULT_THUMBNAIL_TYPE = "basic";
 
@@ -775,28 +778,100 @@
   var PRODUCT_ASSET_BINDINGS = [
     {
       productCode: "SIMPLE_BEEF_JANGJORIM_130",
-      assetKey: "SIMPLE_BEEF_JANGJORIM_130",
-      source: "code-fallback",
-      note: "Figma PRODUCT_ASSETS \uD398\uC774\uC9C0 \uB178\uB4DC \uBA85\uBA85 \uADDC\uCE59\uC774 \uD655\uC815\uB418\uBA74 \uC7AC\uD655\uC778 \uD544\uC694"
+      variants: [
+        {
+          assetKind: "package",
+          source: {
+            kind: "component-variant",
+            componentName: "\uC18C\uACE0\uAE30\uC7A5\uC870\uB9BC130",
+            confirmedNodeId: "2008:3811"
+          },
+          assetKey: "SIMPLE_BEEF_JANGJORIM_130",
+          status: "confirmed",
+          note: "screenshot\uC73C\uB85C \uC2E4\uC81C verified \uC378\uB124\uC77C(LAYOUT_01~10)\uC758 \uD328\uD0A4\uC9C0 \uC0AC\uC9C4\uACFC \uB3D9\uC77C\uD568\uC744 \uD655\uC778"
+        },
+        {
+          assetKind: "plated-side",
+          source: {
+            kind: "component-variant",
+            componentName: "\uC1E0\uACE0\uAE30\uC7A5\uC870\uB9BC_\uCE21",
+            confirmedNodeId: "2008:3473"
+          },
+          assetKey: "SIMPLE_BEEF_JANGJORIM_130_PLATED_SIDE",
+          status: "code-fallback",
+          note: '"\uC1E0\uACE0\uAE30\uC7A5\uC870\uB9BC"(\uC18C\uACE0\uAE30\uC7A5\uC870\uB9BC\uACFC \uB3D9\uC77C \uBC1C\uC74C \uD45C\uAE30)_\uCE21 \u2014 \uAC19\uC740 \uC0C1\uD488\uC758 \uD50C\uB808\uC774\uD305 \uCEF7\uC73C\uB85C \uCD94\uC815, 100% \uD655\uC815\uC740 \uC544\uB2D8'
+        }
+      ]
     },
     {
       productCode: "SIMPLE_QUAIL_JANGJORIM_180",
-      assetKey: "SIMPLE_QUAIL_JANGJORIM_180",
-      source: "code-fallback",
-      note: "Figma PRODUCT_ASSETS \uD398\uC774\uC9C0 \uB178\uB4DC \uBA85\uBA85 \uADDC\uCE59\uC774 \uD655\uC815\uB418\uBA74 \uC7AC\uD655\uC778 \uD544\uC694"
+      variants: [
+        {
+          assetKind: "package",
+          source: {
+            kind: "component-variant",
+            componentName: "\uBA54\uCD94\uB9AC\uC54C\uC7A5\uC870\uB9BC180",
+            confirmedNodeId: "2008:3813"
+          },
+          assetKey: "SIMPLE_QUAIL_JANGJORIM_180",
+          status: "confirmed",
+          note: "screenshot\uC73C\uB85C \uC2E4\uC81C verified \uC378\uB124\uC77C(LAYOUT_02, node 69:17172)\uC758 \uD328\uD0A4\uC9C0 \uC0AC\uC9C4\uACFC \uB3D9\uC77C\uD568\uC744 \uD655\uC778"
+        },
+        {
+          assetKind: "plated-side",
+          source: {
+            kind: "component-variant",
+            componentName: "\uBA54\uCD94\uB9AC\uC54C_\uCE21",
+            confirmedNodeId: "2008:3459"
+          },
+          assetKey: "SIMPLE_QUAIL_JANGJORIM_180_PLATED_SIDE",
+          status: "code-fallback",
+          note: "\uC6A9\uB7C9 \uD45C\uAE30\uAC00 \uC5C6\uC5B4 180g \uC0C1\uD488\uACFC \uB3D9\uC77C\uD55C\uC9C0 100% \uD655\uC815\uC740 \uC544\uB2D8"
+        }
+      ]
     },
     {
       productCode: "SIMPLE_CHIVE_KKOMAK_240",
-      assetKey: "SIMPLE_CHIVE_KKOMAK_240",
-      source: "code-fallback",
-      note: "Figma PRODUCT_ASSETS \uD398\uC774\uC9C0 \uB178\uB4DC \uBA85\uBA85 \uADDC\uCE59\uC774 \uD655\uC815\uB418\uBA74 \uC7AC\uD655\uC778 \uD544\uC694"
+      variants: [
+        {
+          assetKind: "package",
+          source: {
+            kind: "component-variant",
+            componentName: "\uBD80\uCD94\uAF2C\uB9C9\uBB34\uCE68240",
+            confirmedNodeId: "2008:3861"
+          },
+          assetKey: "SIMPLE_CHIVE_KKOMAK_240",
+          status: "confirmed",
+          note: "\uC774\uB984\uC5D0 \uC6A9\uB7C9(240)\uAE4C\uC9C0 \uC815\uD655\uD788 \uC77C\uCE58 \u2014 \uAE30\uC874\uC5D0 \uC2E4\uC81C verified \uC378\uB124\uC77C \uD504\uB808\uC784 \uC790\uCCB4\uB294 \uBABB \uCC3E\uC558\uC9C0\uB9CC, \uD328\uD0A4\uC9C0 asset\uC740 \uD655\uC778\uB428"
+        },
+        {
+          assetKind: "plated-side",
+          source: {
+            kind: "component-variant",
+            componentName: "\uBD80\uCD94\uAF2C\uB9C9\uBB34\uCE68240_\uCE21",
+            confirmedNodeId: "2008:3863"
+          },
+          assetKey: "SIMPLE_CHIVE_KKOMAK_240_PLATED_SIDE",
+          status: "confirmed",
+          note: "\uC774\uB984/\uC6A9\uB7C9 \uC815\uD655\uD788 \uC77C\uCE58"
+        }
+      ]
     }
     // BABY_BEEF_PORRIDGE_100 / BABY_PUMPKIN_PORRIDGE_100은 실제 상품명과 불일치하는 것으로
     // 확인된 placeholder이므로 asset binding을 등록하지 않는다(=composePlan 대상에서 제외됨).
+    // 보류(등록 안 함): "반찬_측/탑" 섹션의 "꼬막무침"(2008:3385/2008:3372, "부추" 접두어 없음,
+    // 용량 표기 없음)은 SIMPLE_CHIVE_KKOMAK_240("부추꼬막무침240")과 동일 상품인지, 아니면
+    // 별도 SKU(예: 다른 용량/부추 없는 버전)인지 확인되지 않아 alias로도 연결하지 않는다.
   ];
-  function resolveProductAssetKey(productCode) {
+  function resolveProductAssetVariant(productCode, assetKind = DEFAULT_PRODUCT_ASSET_KIND) {
     var _a;
-    return (_a = PRODUCT_ASSET_BINDINGS.find((b) => b.productCode === productCode)) == null ? void 0 : _a.assetKey;
+    return (_a = PRODUCT_ASSET_BINDINGS.find((b) => b.productCode === productCode)) == null ? void 0 : _a.variants.find(
+      (v) => v.assetKind === assetKind
+    );
+  }
+  function resolveProductAssetKey(productCode, assetKind = DEFAULT_PRODUCT_ASSET_KIND) {
+    var _a;
+    return (_a = resolveProductAssetVariant(productCode, assetKind)) == null ? void 0 : _a.assetKey;
   }
 
   // ../core/src/data/products.ts
