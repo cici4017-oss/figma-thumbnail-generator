@@ -1,8 +1,9 @@
-import type { CompositionPlan } from '@thumbnail-generator/core';
+import type { CompositionPlan, CompositionPlanSlot } from '@thumbnail-generator/core';
 import type { ProductGroupId } from '@thumbnail-generator/core';
 import type { ThumbnailType } from '@thumbnail-generator/core';
 import { resolveProductAsset } from './assetResolver';
-import { computeGeneratedSlotRects, SUPPORTED_GENERATED_FAMILIES } from './generatedLayoutGeometry';
+import { computeGeneratedSlotRects, SUPPORTED_GENERATED_FAMILIES, type GeneratedSlotRect } from './generatedLayoutGeometry';
+import { computeMixedSlotRects, type MixedSlotGroup } from './mixedLayoutGeometry';
 
 /**
  * generated CompositionPlan(검증된 Layout이 없어 family 공식으로 자동 생성된 plan)을 실제
@@ -70,6 +71,23 @@ function findSupport(
   );
 }
 
+/**
+ * plan.slots를 productCode(assetKey)별로 묶는다. 그룹 순서 = 각 상품이 plan.slots에서
+ * 처음 등장하는 순서(=Excel 순번 오름차순으로 펼쳐진 순서) 그대로 — 재정렬하지 않는다.
+ */
+function groupSlotsByAsset(slots: CompositionPlanSlot[]): MixedSlotGroup[] {
+  const order: string[] = [];
+  const byAsset = new Map<string, string[]>();
+  for (const slot of slots) {
+    if (!byAsset.has(slot.assetKey)) {
+      byAsset.set(slot.assetKey, []);
+      order.push(slot.assetKey);
+    }
+    byAsset.get(slot.assetKey)!.push(slot.slotKey);
+  }
+  return order.map((assetKey) => ({ assetKey, slotKeys: byAsset.get(assetKey)! }));
+}
+
 function findShellFrame(s: GeneratedRendererSupport): FrameNode | null {
   if (s.baseShellFrameNodeId) {
     const byId = figma.getNodeById(s.baseShellFrameNodeId);
@@ -120,20 +138,32 @@ export async function renderGeneratedPlan(
     };
   }
 
-  let rects;
+  // 혼합상품(서로 다른 productCode가 2개 이상)은 family 공식 대신 상품별로 묶어서 배치하는
+  // 전용 로직을 쓴다 — 단일상품 generated는 실사용 테스트에서 문제 없음이 확인되어 그대로
+  // family 공식(row-linear/diagonal-cascade/pyramid-stack)을 유지한다.
+  const distinctAssetKeyCount = new Set(plan.slots.map((s) => s.assetKey)).size;
+  const isMixed = distinctAssetKeyCount >= 2;
+
+  let rects: GeneratedSlotRect[];
   try {
-    rects = computeGeneratedSlotRects({
-      familyId,
-      slotKeys: plan.slots.map((s) => s.slotKey),
-      frameWidth: shellFrame.width,
-      frameHeight: shellFrame.height,
-    });
+    rects = isMixed
+      ? computeMixedSlotRects({
+          groups: groupSlotsByAsset(plan.slots),
+          frameWidth: shellFrame.width,
+          frameHeight: shellFrame.height,
+        })
+      : computeGeneratedSlotRects({
+          familyId,
+          slotKeys: plan.slots.map((s) => s.slotKey),
+          frameWidth: shellFrame.width,
+          frameHeight: shellFrame.height,
+        });
   } catch (err) {
     return { ok: false, message: (err as Error).message };
   }
 
   const clone = shellFrame.clone();
-  clone.name = `${shellFrame.name} (generated ${familyId} ${slotCount} 자동생성 결과)`;
+  clone.name = `${shellFrame.name} (generated ${isMixed ? 'mixed' : familyId} ${slotCount} 자동생성 결과)`;
   clone.x = shellFrame.x + shellFrame.width + RESULT_GAP;
   clone.y = shellFrame.y;
   shellFrame.parent?.appendChild(clone);

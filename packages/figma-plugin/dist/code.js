@@ -1671,6 +1671,43 @@
     }
   }
 
+  // src/mixedLayoutGeometry.ts
+  var MARGIN2 = 60;
+  var ROW_OVERLAP = 0.2;
+  var CELL_OVERLAP = 0.28;
+  function rowWidthFactor(count) {
+    return 1 + (count - 1) * (1 - CELL_OVERLAP);
+  }
+  function computeMixedSlotRects(input) {
+    const { groups, frameWidth, frameHeight } = input;
+    if (groups.length === 0) {
+      throw new Error("groups\uAC00 \uBE44\uC5B4 \uC788\uC2B5\uB2C8\uB2E4.");
+    }
+    if (groups.some((g) => g.slotKeys.length === 0)) {
+      throw new Error("\uBE48 slotKeys\uB97C \uAC00\uC9C4 group\uC774 \uC788\uC2B5\uB2C8\uB2E4.");
+    }
+    const maxRowWidthFactor = Math.max(...groups.map((g) => rowWidthFactor(g.slotKeys.length)));
+    const totalHeightFactor = 1 + (groups.length - 1) * (1 - ROW_OVERLAP);
+    const sizeByWidth = (frameWidth - MARGIN2 * 2) / maxRowWidthFactor;
+    const sizeByHeight = (frameHeight - MARGIN2 * 2) / totalHeightFactor;
+    const size = Math.min(sizeByWidth, sizeByHeight);
+    const rowPitchY = size * (1 - ROW_OVERLAP);
+    const totalHeight = size + (groups.length - 1) * rowPitchY;
+    const startY = (frameHeight - totalHeight) / 2;
+    const rects = [];
+    groups.forEach((group, rowIndex) => {
+      const count = group.slotKeys.length;
+      const cellPitchX = size * (1 - CELL_OVERLAP);
+      const rowWidth = size + (count - 1) * cellPitchX;
+      const startX = (frameWidth - rowWidth) / 2;
+      const rowY = startY + rowIndex * rowPitchY;
+      group.slotKeys.forEach((slotKey, i) => {
+        rects.push({ slotKey, x: startX + i * cellPitchX, y: rowY, size });
+      });
+    });
+    return rects;
+  }
+
   // src/generatedRenderer.ts
   var GENERATED_RENDERER_SUPPORT = [
     {
@@ -1691,6 +1728,18 @@
     return support.find(
       (s) => s.channelPresetId === plan.channelPresetId && s.productGroup === plan.productGroup && s.thumbnailType === plan.thumbnailType && s.familyIds.includes(familyId)
     );
+  }
+  function groupSlotsByAsset(slots) {
+    const order = [];
+    const byAsset = /* @__PURE__ */ new Map();
+    for (const slot of slots) {
+      if (!byAsset.has(slot.assetKey)) {
+        byAsset.set(slot.assetKey, []);
+        order.push(slot.assetKey);
+      }
+      byAsset.get(slot.assetKey).push(slot.slotKey);
+    }
+    return order.map((assetKey) => ({ assetKey, slotKeys: byAsset.get(assetKey) }));
   }
   function findShellFrame(s) {
     if (s.baseShellFrameNodeId) {
@@ -1726,9 +1775,15 @@
         message: `\uC2AC\uB86F \uC218 \uBD88\uC77C\uCE58: layoutSource.params.slotCount=${slotCount}, plan.slots.length=${plan.slots.length}`
       };
     }
+    const distinctAssetKeyCount = new Set(plan.slots.map((s) => s.assetKey)).size;
+    const isMixed = distinctAssetKeyCount >= 2;
     let rects;
     try {
-      rects = computeGeneratedSlotRects({
+      rects = isMixed ? computeMixedSlotRects({
+        groups: groupSlotsByAsset(plan.slots),
+        frameWidth: shellFrame.width,
+        frameHeight: shellFrame.height
+      }) : computeGeneratedSlotRects({
         familyId,
         slotKeys: plan.slots.map((s) => s.slotKey),
         frameWidth: shellFrame.width,
@@ -1738,7 +1793,7 @@
       return { ok: false, message: err.message };
     }
     const clone = shellFrame.clone();
-    clone.name = `${shellFrame.name} (generated ${familyId} ${slotCount} \uC790\uB3D9\uC0DD\uC131 \uACB0\uACFC)`;
+    clone.name = `${shellFrame.name} (generated ${isMixed ? "mixed" : familyId} ${slotCount} \uC790\uB3D9\uC0DD\uC131 \uACB0\uACFC)`;
     clone.x = shellFrame.x + shellFrame.width + RESULT_GAP2;
     clone.y = shellFrame.y;
     (_a = shellFrame.parent) == null ? void 0 : _a.appendChild(clone);
