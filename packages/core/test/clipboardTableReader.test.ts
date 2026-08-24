@@ -175,6 +175,73 @@ async function testMatchesExistingXlsxBatchPreview() {
   console.log('  ✓ 동일 데이터 기준 xlsx 업로드 경로와 clipboard 붙여넣기 경로의 Batch Preview 결과가 완전히 동일함');
 }
 
+function testProductCodeColumnTakesPriorityOverName() {
+  // 실사용 복붙 테스트에서 확인된 문제: 상품명이 미세하게 다르면(예: 셀 안 줄바꿈으로 생긴
+  // 연속 공백) 정상 상품인데도 PRODUCT_CODE_MISSING으로 막혔다. "상품코드" 열이 있고 그
+  // 값이 PRODUCTS에 실제 존재하면, 상품명이 다소 어긋나도 상품코드를 그대로 써야 한다.
+  const text = tsv([
+    ['작업ID', '순번', '상품군', '채널', '상품명', '상품코드', '수량', '딱지여부', '비고'],
+    ['WO-4001', 1, '간편식', '네이버', '메추리알  장조림', 'SIMPLE_QUAIL_JANGJORIM_180', 3, 'X', ''], // 상품명에 공백 2칸
+  ]);
+  const rows = parseClipboardTable(text);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].productCode, 'SIMPLE_QUAIL_JANGJORIM_180', '상품코드 열이 있으면 상품명이 어긋나도 코드를 그대로 사용해야 함');
+
+  const batch = parseWorkOrderRows(rows, '클립보드 붙여넣기');
+  assert.equal(byId(batch.workOrders, 'WO-4001').status, 'valid');
+  console.log('  ✓ 상품코드 열 우선: 상품명이 연속 공백으로 어긋나도 상품코드로 정상 매칭됨(valid)');
+}
+
+function testProductCodeColumnFallsBackToNameWhenMissingOrUnknown() {
+  const text = tsv([
+    ['작업ID', '순번', '상품군', '채널', '상품명', '상품코드', '수량', '딱지여부', '비고'],
+    ['WO-4002', 1, '간편식', '네이버', '소고기장조림', '', 1, 'O', ''], // 상품코드 빈 값 -> 상품명으로 폴백
+    ['WO-4003', 1, '간편식', '네이버', '부추 꼬막무침', 'NOT_A_REAL_CODE', 2, 'O', ''], // 미등록 코드 -> 상품명으로 폴백
+  ]);
+  const rows = parseClipboardTable(text);
+  assert.equal(rows.find((r) => r.workId === 'WO-4002')!.productCode, 'SIMPLE_BEEF_JANGJORIM_130');
+  assert.equal(rows.find((r) => r.workId === 'WO-4003')!.productCode, 'SIMPLE_CHIVE_KKOMAK_240');
+
+  const batch = parseWorkOrderRows(rows, '클립보드 붙여넣기');
+  assert.equal(byId(batch.workOrders, 'WO-4002').status, 'valid');
+  assert.equal(byId(batch.workOrders, 'WO-4003').status, 'valid');
+  console.log('  ✓ 상품코드 열이 비어있거나 미등록 값이면 상품명 매칭으로 폴백됨');
+}
+
+function testProductNameMatchOnlyNormalizesWhitespaceNotFuzzy() {
+  const text = tsv([
+    ['작업ID', '순번', '상품군', '채널', '상품명', '상품코드', '수량', '딱지여부', '비고'],
+    ['WO-4004', 1, '간편식', '네이버', '  소고기장조림  ', '', 1, 'O', ''], // trim만 필요
+    ['WO-4005', 1, '간편식', '네이버', '소고기 장조림', '', 1, 'X', ''], // 임의 fuzzy match 대상 아님(중간에 없는 공백)
+  ]);
+  const rows = parseClipboardTable(text);
+  assert.equal(rows.find((r) => r.workId === 'WO-4004')!.productCode, 'SIMPLE_BEEF_JANGJORIM_130', 'trim은 허용되어야 함');
+  assert.equal(rows.find((r) => r.workId === 'WO-4005')!.productCode, '', '등록된 이름과 다른 문자열은 fuzzy match하지 않아야 함');
+  console.log('  ✓ 상품명 매칭은 trim/연속 공백 정규화만 허용하고 임의 fuzzy match는 하지 않음');
+}
+
+function testThreeConfirmedCodesViaClipboard() {
+  // 수정 후 확정 코드 3개(SIMPLE_BEEF_JANGJORIM_130/SIMPLE_QUAIL_JANGJORIM_180/
+  // SIMPLE_CHIVE_KKOMAK_240)를 상품코드 열로 붙여넣었을 때 정상 valid가 되는지 확인.
+  const text = tsv([
+    ['작업ID', '순번', '상품군', '채널', '상품명', '상품코드', '수량', '딱지여부', '비고'],
+    ['WO-4006', 1, '간편식', '네이버', '소고기장조림', 'SIMPLE_BEEF_JANGJORIM_130', 2, 'O', ''],
+    ['WO-4006', 2, '간편식', '네이버', '메추리알 장조림', 'SIMPLE_QUAIL_JANGJORIM_180', 3, 'O', ''],
+    ['WO-4006', 3, '간편식', '네이버', '부추 꼬막무침', 'SIMPLE_CHIVE_KKOMAK_240', 4, 'O', ''],
+  ]);
+  const rows = parseClipboardTable(text);
+  assert.deepEqual(
+    rows.map((r) => r.productCode),
+    ['SIMPLE_BEEF_JANGJORIM_130', 'SIMPLE_QUAIL_JANGJORIM_180', 'SIMPLE_CHIVE_KKOMAK_240'],
+  );
+
+  const batch = parseWorkOrderRows(rows, '클립보드 붙여넣기');
+  const wo = byId(batch.workOrders, 'WO-4006');
+  assert.equal(wo.status, 'valid');
+  assert.equal(wo.composition, 'mixed');
+  console.log('  ✓ 확정 코드 3개(SIMPLE_BEEF_JANGJORIM_130/SIMPLE_QUAIL_JANGJORIM_180/SIMPLE_CHIVE_KKOMAK_240) 상품코드 열로 정상 valid');
+}
+
 async function main() {
   testSingleTask();
   testMixedProductsSameWorkId();
@@ -182,6 +249,10 @@ async function main() {
   testInvalidProductNameAndQuantity();
   testHeaderRowWithReorderedColumns();
   await testMatchesExistingXlsxBatchPreview();
+  testProductCodeColumnTakesPriorityOverName();
+  testProductCodeColumnFallsBackToNameWhenMissingOrUnknown();
+  testProductNameMatchOnlyNormalizesWhitespaceNotFuzzy();
+  testThreeConfirmedCodesViaClipboard();
   console.log('clipboardTableReader.test.ts: 모든 검증 통과');
 }
 

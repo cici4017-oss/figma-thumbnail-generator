@@ -56,6 +56,19 @@ const DEFAULT_COLUMN_ORDER: Record<ClipboardColumnKey, number> = {
   note: 7,
 };
 
+/**
+ * 헤더 붙여넣기에 "상품코드" 열이 섞여 있으면(예: 표준 작업요청 시트를 그대로 복사) 상품명
+ * 대신 이 값을 우선 사용한다 — 상품명이 실제 등록된 이름과 공백/표기가 미세하게 달라도
+ * (예: 셀 안 줄바꿈, 연속 공백) 상품코드가 있으면 정확히 매칭된다. 헤더가 없는(표준 컬럼 순서)
+ * 붙여넣기에는 애초에 상품코드 열이 없으므로 여기서는 다루지 않는다.
+ */
+const PRODUCT_CODE_HEADER_LABEL = '상품코드';
+
+/** 상품명 매칭은 trim + 연속 공백(줄바꿈 포함) 정규화만 허용한다 — 임의 fuzzy match는 하지 않는다. */
+function normalizeProductName(name: string): string {
+  return name.trim().replace(/\s+/g, ' ');
+}
+
 function splitClipboardText(text: string): string[][] {
   const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
   const lines = normalized.split('\n');
@@ -63,20 +76,29 @@ function splitClipboardText(text: string): string[][] {
   return lines.map((line) => line.split('\t'));
 }
 
+interface DetectedHeader {
+  columns: Record<ClipboardColumnKey, number>;
+  /** "상품코드" 헤더가 있으면 그 열 인덱스, 없으면 null(=상품명으로만 매칭). */
+  productCodeColumn: number | null;
+}
+
 /**
  * 첫 행에 8개 헤더 라벨이 전부(순서 무관, 다른 열이 섞여 있어도 무방) 있으면 그 위치로
- * 컬럼을 매칭한다. 하나라도 없으면 헤더가 없는 것으로 보고 표준 순서를 쓴다.
+ * 컬럼을 매칭한다. 하나라도 없으면 헤더가 없는 것으로 보고 표준 순서를 쓴다. "상품코드" 열은
+ * 8개에 포함되지 않는 선택 열이라 hasAll 판정과 무관하게 별도로 찾는다.
  */
-function detectHeaderColumns(firstRow: string[]): Record<ClipboardColumnKey, number> | null {
+function detectHeaderColumns(firstRow: string[]): DetectedHeader | null {
   const found: Partial<Record<ClipboardColumnKey, number>> = {};
+  let productCodeColumn: number | null = null;
   firstRow.forEach((cell, i) => {
     const trimmed = cell.trim();
     for (const key of CLIPBOARD_COLUMNS) {
       if (trimmed === HEADER_LABELS[key]) found[key] = i;
     }
+    if (trimmed === PRODUCT_CODE_HEADER_LABEL) productCodeColumn = i;
   });
   const hasAll = CLIPBOARD_COLUMNS.every((k) => found[k] !== undefined);
-  return hasAll ? (found as Record<ClipboardColumnKey, number>) : null;
+  return hasAll ? { columns: found as Record<ClipboardColumnKey, number>, productCodeColumn } : null;
 }
 
 function toNumberOrNull(raw: string): number | null {
@@ -98,12 +120,14 @@ export function parseClipboardTable(
   const grid = splitClipboardText(text);
   if (grid.length === 0) return [];
 
-  const headerColumns = detectHeaderColumns(grid[0]);
-  const columns = headerColumns ?? DEFAULT_COLUMN_ORDER;
-  const dataRows = headerColumns ? grid.slice(1) : grid;
-  const headerRowOffset = headerColumns ? 2 : 1; // 헤더가 있으면 헤더가 1행, 데이터는 2행부터
+  const header = detectHeaderColumns(grid[0]);
+  const columns = header?.columns ?? DEFAULT_COLUMN_ORDER;
+  const productCodeColumn = header?.productCodeColumn ?? null;
+  const dataRows = header ? grid.slice(1) : grid;
+  const headerRowOffset = header ? 2 : 1; // 헤더가 있으면 헤더가 1행, 데이터는 2행부터
 
-  const nameToCode = new Map(products.map((p) => [p.name, p.code]));
+  const codeSet = new Set(products.map((p) => p.code));
+  const nameToCode = new Map(products.map((p) => [normalizeProductName(p.name), p.code]));
 
   const rows: RawWorkOrderRow[] = [];
   dataRows.forEach((cells, i) => {
@@ -113,6 +137,15 @@ export function parseClipboardTable(
     const productName = get('productName');
     const note = get('note');
 
+    // 우선순위: 1) 상품코드 열 값이 있고 PRODUCTS에 실제 존재 -> 그대로 사용
+    //          2) 없거나 미등록이면 상품명(trim/연속 공백 정규화)으로 PRODUCTS 매칭
+    //          3) 둘 다 실패하면 빈 문자열(기존 PRODUCT_CODE_MISSING으로 자연스럽게 이어짐)
+    const rawProductCode = productCodeColumn !== null ? (cells[productCodeColumn] ?? '').trim() : '';
+    const productCode =
+      rawProductCode && codeSet.has(rawProductCode)
+        ? rawProductCode
+        : (nameToCode.get(normalizeProductName(productName)) ?? '');
+
     rows.push({
       rowIndex: i + headerRowOffset,
       workId: get('workId'),
@@ -120,7 +153,7 @@ export function parseClipboardTable(
       productGroup: get('productGroup'),
       channel: get('channel'),
       productName,
-      productCode: nameToCode.get(productName) ?? '',
+      productCode,
       quantity: toNumberOrNull(get('quantity')),
       badgeRaw: get('badge') || null,
       note: note === '' ? null : note,

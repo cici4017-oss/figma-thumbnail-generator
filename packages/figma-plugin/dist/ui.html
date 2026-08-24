@@ -52053,6 +52053,10 @@
     badge: 6,
     note: 7
   };
+  var PRODUCT_CODE_HEADER_LABEL = "\uC0C1\uD488\uCF54\uB4DC";
+  function normalizeProductName(name) {
+    return name.trim().replace(/\s+/g, " ");
+  }
   function splitClipboardText(text) {
     const normalized = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
     const lines = normalized.split("\n");
@@ -52061,14 +52065,16 @@
   }
   function detectHeaderColumns(firstRow) {
     const found = {};
+    let productCodeColumn = null;
     firstRow.forEach((cell, i) => {
       const trimmed = cell.trim();
       for (const key of CLIPBOARD_COLUMNS) {
         if (trimmed === HEADER_LABELS[key]) found[key] = i;
       }
+      if (trimmed === PRODUCT_CODE_HEADER_LABEL) productCodeColumn = i;
     });
     const hasAll = CLIPBOARD_COLUMNS.every((k) => found[k] !== void 0);
-    return hasAll ? found : null;
+    return hasAll ? { columns: found, productCodeColumn } : null;
   }
   function toNumberOrNull2(raw) {
     const trimmed = raw.trim();
@@ -52077,23 +52083,28 @@
     return Number.isFinite(n) ? n : null;
   }
   function parseClipboardTable(text, products = PRODUCTS) {
+    var _a, _b;
     const grid = splitClipboardText(text);
     if (grid.length === 0) return [];
-    const headerColumns = detectHeaderColumns(grid[0]);
-    const columns = headerColumns != null ? headerColumns : DEFAULT_COLUMN_ORDER;
-    const dataRows = headerColumns ? grid.slice(1) : grid;
-    const headerRowOffset = headerColumns ? 2 : 1;
-    const nameToCode = new Map(products.map((p) => [p.name, p.code]));
+    const header = detectHeaderColumns(grid[0]);
+    const columns = (_a = header == null ? void 0 : header.columns) != null ? _a : DEFAULT_COLUMN_ORDER;
+    const productCodeColumn = (_b = header == null ? void 0 : header.productCodeColumn) != null ? _b : null;
+    const dataRows = header ? grid.slice(1) : grid;
+    const headerRowOffset = header ? 2 : 1;
+    const codeSet = new Set(products.map((p) => p.code));
+    const nameToCode = new Map(products.map((p) => [normalizeProductName(p.name), p.code]));
     const rows = [];
     dataRows.forEach((cells, i) => {
-      var _a;
+      var _a2, _b2;
       if (cells.every((c) => c.trim() === "")) return;
       const get = (key) => {
-        var _a2;
-        return ((_a2 = cells[columns[key]]) != null ? _a2 : "").trim();
+        var _a3;
+        return ((_a3 = cells[columns[key]]) != null ? _a3 : "").trim();
       };
       const productName = get("productName");
       const note = get("note");
+      const rawProductCode = productCodeColumn !== null ? ((_a2 = cells[productCodeColumn]) != null ? _a2 : "").trim() : "";
+      const productCode = rawProductCode && codeSet.has(rawProductCode) ? rawProductCode : (_b2 = nameToCode.get(normalizeProductName(productName))) != null ? _b2 : "";
       rows.push({
         rowIndex: i + headerRowOffset,
         workId: get("workId"),
@@ -52101,7 +52112,7 @@
         productGroup: get("productGroup"),
         channel: get("channel"),
         productName,
-        productCode: (_a = nameToCode.get(productName)) != null ? _a : "",
+        productCode,
         quantity: toNumberOrNull2(get("quantity")),
         badgeRaw: get("badge") || null,
         note: note === "" ? null : note
