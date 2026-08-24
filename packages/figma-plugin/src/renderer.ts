@@ -1,5 +1,5 @@
 import type { CompositionPlan } from '@thumbnail-generator/core';
-import { resolveTemplate, FIGMA_TEMPLATE_BINDINGS, type FigmaTemplateBinding } from './templateMapper';
+import { resolveTemplate, FIGMA_TEMPLATE_BINDINGS, type FigmaTemplateBinding, type FigmaSlotBinding } from './templateMapper';
 import { resolveProductAsset } from './assetResolver';
 
 export type RenderPlanResult = { ok: true; nodeId: string } | { ok: false; message: string };
@@ -16,6 +16,32 @@ function findTemplateFrame(binding: FigmaTemplateBinding): FrameNode | null {
     (n) => n.type === 'FRAME' && n.name === binding.templateFrameName,
   );
   return byName && byName.type === 'FRAME' ? byName : null;
+}
+
+/** root의 전체 하위 트리(문서 트리 순회 순서, depth-first)에서 이름이 일치하는 노드를 전부 모은다. */
+function collectLayersByName(root: BaseNode, name: string): SceneNode[] {
+  const out: SceneNode[] = [];
+  if ('children' in root) {
+    for (const child of (root as unknown as ChildrenMixin).children) {
+      if ((child as SceneNode).name === name) out.push(child as SceneNode);
+      out.push(...collectLayersByName(child as BaseNode, name));
+    }
+  }
+  return out;
+}
+
+/**
+ * 실제 조사 결과, 일부 채널 프레임은 슬롯마다 고유 레이어 이름을 쓰지 않고 전부 같은 이름을
+ * 재사용한다(templateMapper.ts의 채널 확장 바인딩 주석 참고). layerIndex가 지정되어 있으면
+ * 같은 이름의 레이어 중 그 순번(0-based, 트리 순회 순서)을 쓰고, 없으면 기존과 동일하게
+ * findOne(=첫 번째로 찾은 노드)을 쓴다(하위 호환).
+ */
+function findSlotLayer(clone: FrameNode, slotBinding: FigmaSlotBinding): SceneNode | null {
+  if (slotBinding.layerIndex === undefined) {
+    return clone.findOne((n) => n.name === slotBinding.layerName);
+  }
+  const matches = collectLayersByName(clone, slotBinding.layerName);
+  return matches[slotBinding.layerIndex] ?? null;
 }
 
 /**
@@ -69,13 +95,14 @@ export async function renderPlan(
 
   for (const slot of plan.slots) {
     const slotBinding = binding.slotBindings.find((b) => b.slotKey === slot.slotKey)!;
-    const layer = clone.findOne((n) => n.name === slotBinding.layerName);
+    const layer = findSlotLayer(clone, slotBinding);
 
     if (!layer) {
       clone.remove();
+      const indexNote = slotBinding.layerIndex !== undefined ? `(layerIndex=${slotBinding.layerIndex})` : '';
       return {
         ok: false,
-        message: `복제된 프레임에서 레이어 "${slotBinding.layerName}"을(를) 찾을 수 없습니다.`,
+        message: `복제된 프레임에서 레이어 "${slotBinding.layerName}"${indexNote}을(를) 찾을 수 없습니다.`,
       };
     }
     if (!('fills' in layer)) {

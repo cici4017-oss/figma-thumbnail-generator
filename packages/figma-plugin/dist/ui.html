@@ -52809,6 +52809,221 @@
         { slotKey: "slot_4", layerName: "image 415" },
         { slotKey: "slot_5", layerName: "image 416" }
       ]
+    },
+    // --- 채널 확장(2026-08-24): SSG/쿠팡/옥션/지마켓/SK스토아/NS홈쇼핑/알리익스프레스/SKT딜/
+    // 올웨이즈/이랜드몰/롯데온을 우선순위대로 read-only 조사했다. "썸네일 (Copy)"의 "장조림"/
+    // "간편식_요리" 페이지에서 소고기장조림130/메추리알장조림180/부추꼬막무침240 계열의 실제
+    // 프레임을 프레임 이름이 아니라 실제 자식 레이어 구조(+screenshot)로 확인한 결과만 아래에
+    // 담는다. 이름만 믿고 넘어간 게 아니라, 다음처럼 이름과 실제 구조가 불일치하는 사례를
+    // 다수 발견해서 그런 프레임은 전부 제외했다:
+    // - SSG_1000_소고기장조림130_3/5, SSG_1000_메추리알장조림180_10: 셋 다 실제 슬롯은
+    //   image 312 "1개"뿐이고(screenshot으로 확인 — 실제로는 상품 1개 + "×3/×5/×10" 수량
+    //   뱃지 스티커였다), 슬롯이 여러 개가 아니다 → SSG는 이번 배치에서 바인딩하지 않음
+    //   (진짜 1/3/5/10 다중 슬롯 프레임이 하나도 확인되지 않음).
+    // - 이랜드몰_1000_메추리알장조림180_5/10: 두 프레임이 완전히 동일한 구조(image 312 1개 +
+    //   메추리알장조림1808 1개, 총 2개)라 "_5"/"_10"이 실제 슬롯 수와 맞지 않음 → 제외.
+    // - 쿠팡_1000_메추리알장조림180_10: "_5"와 완전히 동일한 구조(메추리알장조림1808 5개)라
+    //   실제로는 5슬롯인데 "_10"으로 잘못 표기됨 → 제외.
+    // - 쿠팡알리_1000_소고기장조림130_5: image 411이 없이 4개 슬롯뿐(screenshot에서도 4개만
+    //   보임) → "_5"로 표기됐지만 실제 5슬롯이 아니라서 제외.
+    // - SK스토아/NS홈쇼핑/SKT딜: 파일 전체(장조림/간편식_요리/간편식_죽/간편식_채널_믹스/
+    //   Page 12/Page 16/시뮬/영유아_* 전 페이지)를 조사했지만, 등록된 3개 상품(소고기장조림130/
+    //   메추리알장조림180/부추꼬막무침240) 계열의 실제 프레임을 하나도 찾지 못했다(SK스토아는
+    //   완전히 다른 상품 "본케어 고단백 영양죽"의 760x360 wide 프레임만 있음). 이번엔 바인딩
+    //   추가 없음.
+    //
+    // 일부 채널(쿠팡/옥션/롯데온 등)은 슬롯마다 고유 레이어 이름을 쓰지 않고 전부 같은 이름
+    // ("메추리알장조림1808"/"image 626")을 재사용한다 — 이 경우 layerIndex(문서 트리 순회
+    // 순서, 0-based)로 슬롯을 구분한다(FigmaSlotBinding.layerIndex 참고).
+    //
+    // "쿠팡알리_..." 프레임은 실제 프레임 이름 자체가 두 채널(쿠팡+알리익스프레스) 공용 디자인임을
+    // 선언하고 있어서, 쿠팡에 더 적합한 전용 프레임이 없는 수량(1)에 한해 두 channelPresetId에
+    // 동일 노드를 물리적으로 공유해서 바인딩했다 — 네이버 프레임을 다른 채널에 임의로 재사용한
+    // 것과는 다르다(그 프레임 자체가 "이 두 채널 공용"이라고 이름으로 확인됨).
+    // --- gmarket-1000x1000 (지마켓) ---
+    {
+      layoutKey: "LAYOUT_01",
+      channelPresetId: "gmarket-1000x1000",
+      templateFrameName: "\uC9C0\uB9C8\uCF13_1000_\uC18C\uACE0\uAE30\uC7A5\uC870\uB9BC130_1",
+      templateFrameNodeId: "69:648",
+      slotBindings: [{ slotKey: "slot_1", layerName: "image 312" }]
+    },
+    {
+      layoutKey: "LAYOUT_02",
+      channelPresetId: "gmarket-1000x1000",
+      templateFrameName: "\uC9C0\uB9C8\uCF13_1000_\uC18C\uACE0\uAE30\uC7A5\uC870\uB9BC130_3",
+      templateFrameNodeId: "69:544",
+      slotBindings: [
+        { slotKey: "slot_1", layerName: "image 313" },
+        { slotKey: "slot_2", layerName: "image 409" },
+        { slotKey: "slot_3", layerName: "image 410" }
+      ]
+    },
+    {
+      layoutKey: "LAYOUT_03",
+      channelPresetId: "gmarket-1000x1000",
+      templateFrameName: "\uC9C0\uB9C8\uCF13_1000_\uC18C\uACE0\uAE30\uC7A5\uC870\uB9BC130_5",
+      templateFrameNodeId: "69:569",
+      slotBindings: [
+        { slotKey: "slot_1", layerName: "image 411" },
+        { slotKey: "slot_2", layerName: "image 412" },
+        { slotKey: "slot_3", layerName: "image 413" },
+        { slotKey: "slot_4", layerName: "image 414" },
+        { slotKey: "slot_5", layerName: "image 415" }
+      ]
+    },
+    // --- auction-1000x1000 (옥션) ---
+    {
+      layoutKey: "LAYOUT_01",
+      channelPresetId: "auction-1000x1000",
+      templateFrameName: "\uC625\uC158_1000_\uC18C\uACE0\uAE30\uC7A5\uC870\uB9BC130_1",
+      templateFrameNodeId: "69:923",
+      slotBindings: [{ slotKey: "slot_1", layerName: "image 312" }]
+    },
+    {
+      layoutKey: "LAYOUT_02",
+      channelPresetId: "auction-1000x1000",
+      templateFrameName: "\uC625\uC158_1000_\uC18C\uACE0\uAE30\uC7A5\uC870\uB9BC130_3",
+      templateFrameNodeId: "69:871",
+      slotBindings: [
+        { slotKey: "slot_1", layerName: "image 313" },
+        { slotKey: "slot_2", layerName: "image 409" },
+        { slotKey: "slot_3", layerName: "image 410" }
+      ]
+    },
+    {
+      layoutKey: "LAYOUT_03",
+      channelPresetId: "auction-1000x1000",
+      templateFrameName: "\uC625\uC158_1000_\uC18C\uACE0\uAE30\uC7A5\uC870\uB9BC130_5",
+      templateFrameNodeId: "69:896",
+      slotBindings: [
+        { slotKey: "slot_1", layerName: "image 411" },
+        { slotKey: "slot_2", layerName: "image 412" },
+        { slotKey: "slot_3", layerName: "image 413" },
+        { slotKey: "slot_4", layerName: "image 414" },
+        { slotKey: "slot_5", layerName: "image 415" }
+      ]
+    },
+    {
+      // 10개 슬롯 전부 동일 레이어 이름("메추리알장조림1808") — layerIndex(0~9, 트리 순회 순서)로 구분.
+      layoutKey: "LAYOUT_04",
+      channelPresetId: "auction-1000x1000",
+      templateFrameName: "\uC625\uC158_1000x1000_\uBA54\uCD94\uB9AC\uC54C\uC7A5\uC870\uB9BC_180_10",
+      templateFrameNodeId: "69:18186",
+      slotBindings: Array.from({ length: 10 }, (_, i) => ({
+        slotKey: `slot_${i + 1}`,
+        layerName: "\uBA54\uCD94\uB9AC\uC54C\uC7A5\uC870\uB9BC1808",
+        layerIndex: i
+      }))
+    },
+    // --- coupang-1000x1000 (쿠팡) ---
+    {
+      // 전용 1슬롯 프레임이 없어 "쿠팡알리_..." 공용 프레임(쿠팡+알리익스프레스)을 그대로 쓴다.
+      layoutKey: "LAYOUT_01",
+      channelPresetId: "coupang-1000x1000",
+      templateFrameName: "\uCFE0\uD321\uC54C\uB9AC_1000_\uC18C\uACE0\uAE30\uC7A5\uC870\uB9BC130_1",
+      templateFrameNodeId: "69:2011",
+      slotBindings: [{ slotKey: "slot_1", layerName: "image 312" }]
+    },
+    {
+      // 3슬롯 전부 동일 레이어 이름("메추리알장조림1808") — layerIndex로 구분.
+      layoutKey: "LAYOUT_02",
+      channelPresetId: "coupang-1000x1000",
+      templateFrameName: "\uCFE0\uD321_1000_\uBA54\uCD94\uB9AC\uC54C\uC7A5\uC870\uB9BC180_3",
+      templateFrameNodeId: "69:17279",
+      slotBindings: [0, 1, 2].map((i) => ({ slotKey: `slot_${i + 1}`, layerName: "\uBA54\uCD94\uB9AC\uC54C\uC7A5\uC870\uB9BC1808", layerIndex: i }))
+    },
+    {
+      layoutKey: "LAYOUT_03",
+      channelPresetId: "coupang-1000x1000",
+      templateFrameName: "\uCFE0\uD321_1000_\uBA54\uCD94\uB9AC\uC54C\uC7A5\uC870\uB9BC180_5",
+      templateFrameNodeId: "69:17307",
+      slotBindings: Array.from({ length: 5 }, (_, i) => ({
+        slotKey: `slot_${i + 1}`,
+        layerName: "\uBA54\uCD94\uB9AC\uC54C\uC7A5\uC870\uB9BC1808",
+        layerIndex: i
+      }))
+    },
+    // --- aliexpress-1000x1000 (알리익스프레스) — 전용 프레임 없음, "쿠팡알리_..." 공용 프레임 사용 ---
+    {
+      layoutKey: "LAYOUT_01",
+      channelPresetId: "aliexpress-1000x1000",
+      templateFrameName: "\uCFE0\uD321\uC54C\uB9AC_1000_\uC18C\uACE0\uAE30\uC7A5\uC870\uB9BC130_1",
+      templateFrameNodeId: "69:2011",
+      slotBindings: [{ slotKey: "slot_1", layerName: "image 312" }]
+    },
+    {
+      layoutKey: "LAYOUT_02",
+      channelPresetId: "aliexpress-1000x1000",
+      templateFrameName: "\uCFE0\uD321\uC54C\uB9AC_1000_\uC18C\uACE0\uAE30\uC7A5\uC870\uB9BC130_3",
+      templateFrameNodeId: "69:2037",
+      slotBindings: [
+        { slotKey: "slot_1", layerName: "image 312" },
+        { slotKey: "slot_2", layerName: "image 409" },
+        { slotKey: "slot_3", layerName: "image 410" }
+      ]
+    },
+    // --- alwayz-1000x1000 (올웨이즈) ---
+    {
+      layoutKey: "LAYOUT_01",
+      channelPresetId: "alwayz-1000x1000",
+      templateFrameName: "\uC62C\uC6E8\uC774\uC988_1000_\uBD80\uCD94\uAF2C\uB9C9\uBB34\uCE68240g_1",
+      templateFrameNodeId: "69:42563",
+      slotBindings: [{ slotKey: "slot_1", layerName: "image 626" }]
+    },
+    {
+      // 3슬롯 전부 동일 레이어 이름("image 626") — layerIndex로 구분.
+      layoutKey: "LAYOUT_02",
+      channelPresetId: "alwayz-1000x1000",
+      templateFrameName: "\uC62C\uC6E8\uC774\uC988_1000_\uBD80\uCD94\uAF2C\uB9C9\uBB34\uCE68240g_3",
+      templateFrameNodeId: "69:42612",
+      slotBindings: [0, 1, 2].map((i) => ({ slotKey: `slot_${i + 1}`, layerName: "image 626", layerIndex: i }))
+    },
+    // --- eland-mall-1000x1000 (이랜드몰) — qty1은 실제 프레임 미확인, qty5/10은 실제로는
+    // 슬롯이 2개뿐(이름만 "_5"/"_10")이라 제외. qty3만 바인딩. ---
+    {
+      layoutKey: "LAYOUT_02",
+      channelPresetId: "eland-mall-1000x1000",
+      templateFrameName: "\uC774\uB79C\uB4DC\uBAB0_1000_\uBD80\uCD94\uAF2C\uB9C9\uBB34\uCE68240g_3",
+      templateFrameNodeId: "69:43227",
+      slotBindings: [0, 1, 2].map((i) => ({ slotKey: `slot_${i + 1}`, layerName: "image 626", layerIndex: i }))
+    },
+    // --- lotte-on-1000x1000 (롯데온) ---
+    {
+      layoutKey: "LAYOUT_01",
+      channelPresetId: "lotte-on-1000x1000",
+      templateFrameName: "\uB86F\uB370\uC628_1000_\uBD80\uCD94\uAF2C\uB9C9\uBB34\uCE68240g_1",
+      templateFrameNodeId: "69:42932",
+      slotBindings: [{ slotKey: "slot_1", layerName: "image 626" }]
+    },
+    {
+      layoutKey: "LAYOUT_02",
+      channelPresetId: "lotte-on-1000x1000",
+      templateFrameName: "\uB86F\uB370\uC628_1000_\uBD80\uCD94\uAF2C\uB9C9\uBB34\uCE68240g_3",
+      templateFrameNodeId: "69:42981",
+      slotBindings: [0, 1, 2].map((i) => ({ slotKey: `slot_${i + 1}`, layerName: "image 626", layerIndex: i }))
+    },
+    {
+      layoutKey: "LAYOUT_03",
+      channelPresetId: "lotte-on-1000x1000",
+      templateFrameName: "\uB86F\uB370\uC628_1000_\uBA54\uCD94\uB9AC\uC54C\uC7A5\uC870\uB9BC180_5",
+      templateFrameNodeId: "69:18924",
+      slotBindings: Array.from({ length: 5 }, (_, i) => ({
+        slotKey: `slot_${i + 1}`,
+        layerName: "\uBA54\uCD94\uB9AC\uC54C\uC7A5\uC870\uB9BC1808",
+        layerIndex: i
+      }))
+    },
+    {
+      layoutKey: "LAYOUT_04",
+      channelPresetId: "lotte-on-1000x1000",
+      templateFrameName: "\uB86F\uB370\uC628_1000_\uBA54\uCD94\uB9AC\uC54C\uC7A5\uC870\uB9BC180_10",
+      templateFrameNodeId: "69:18951",
+      slotBindings: Array.from({ length: 10 }, (_, i) => ({
+        slotKey: `slot_${i + 1}`,
+        layerName: "\uBA54\uCD94\uB9AC\uC54C\uC7A5\uC870\uB9BC1808",
+        layerIndex: i
+      }))
     }
   ];
   function resolveTemplate(layoutKey, channelPresetId, bindings = FIGMA_TEMPLATE_BINDINGS) {
