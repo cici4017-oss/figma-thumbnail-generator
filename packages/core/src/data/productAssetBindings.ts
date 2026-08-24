@@ -165,6 +165,19 @@ export const PRODUCT_ASSET_BINDINGS: ProductAssetBinding[] = [
     ],
   },
   {
+    // capacity 75g은 사용자가 확인해줌(2026-08-24) — 기존 "상세정보" 프레임 E03(70g) 표기와
+    // 충돌해 보류했던 건이지만, 실제 값은 75g으로 확정.
+    productCode: 'SIMPLE_MINI_BUTTER_POTATO_JANGJORIM_75',
+    variants: [
+      {
+        assetKind: 'package',
+        source: { kind: 'component-variant', componentName: '미니 장조림_박스+파우치', variantValue: 'Property 1=미니_본버터감자장조림_75g', confirmedNodeId: '2008:3790' },
+        assetKey: 'SIMPLE_MINI_BUTTER_POTATO_JANGJORIM_75',
+        status: 'confirmed',
+      },
+    ],
+  },
+  {
     productCode: 'SIMPLE_QUAIL_JANGJORIM_1000',
     variants: [
       {
@@ -445,8 +458,6 @@ export const PRODUCT_ASSET_BINDINGS: ProductAssetBinding[] = [
   //   패키징으로 보여 별도 SKU인지 기존 상품의 포장 변형일 뿐인지 불명확.
   // - 신선집중_메추리알장조림_1kg(2008:3765): 브랜드가 "본죽"이 아니라 "신선집중"이라 이
   //   레지스트리(전부 본죽/베이비본죽) 범위에 포함되는 상품인지 확인 필요.
-  // - 미니_본버터감자장조림_75g(2008:3790) vs "상세정보" 프레임의 E03_미니버터감자장조림_70
-  //   (2008:3632): 같은 상품으로 보이는데 용량 표기가 75g/70g로 서로 달라 확정하지 않음.
   // - 미니_본쇠고기장조림_박스_RE(2008:3800): SIMPLE_MINI_BEEF_JANGJORIM_70과 동일 상품의
   //   박스 포장일 가능성이 높으나 용량 표기가 없어 확정하지 않음.
   // - "상세정보" 프레임의 F01~F04/G01~G02(2008:3620~3630, 제주안심/헬시 장조림 120~130g

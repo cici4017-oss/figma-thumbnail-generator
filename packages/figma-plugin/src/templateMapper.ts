@@ -61,6 +61,20 @@ export const FIGMA_TEMPLATE_BINDINGS: FigmaTemplateBinding[] = [
     ],
   },
   {
+    // LAYOUT_02는 channelIds 제한이 없는 채널-무관 verified Layout이므로(이전 조사에서 확인),
+    // 카카오의 square-1x1 출력(kakao-1000x1000)도 동일한 실제 프레임을 그대로 재사용한다.
+    // 새 Figma 콘텐츠를 만드는 게 아니라 같은 원본을 다른 channelPresetId에도 등록하는 것뿐이다.
+    layoutKey: 'LAYOUT_02',
+    channelPresetId: 'kakao-1000x1000',
+    templateFrameName: '네이버_소고기장조림130_3',
+    templateFrameNodeId: '69:417',
+    slotBindings: [
+      { slotKey: 'slot_1', layerName: 'image 313' },
+      { slotKey: 'slot_2', layerName: 'image 409' },
+      { slotKey: 'slot_3', layerName: 'image 410' },
+    ],
+  },
+  {
     layoutKey: 'LAYOUT_03',
     channelPresetId: 'naver-1000x1000',
     templateFrameName: '네이버_소고기장조림130_5',

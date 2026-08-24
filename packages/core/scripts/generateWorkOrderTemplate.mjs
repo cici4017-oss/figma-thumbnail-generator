@@ -53,6 +53,7 @@ const PRODUCT_ROWS = {
     { code: 'SIMPLE_BEEF_JANGJORIM_300', brand: '본죽', name: '본 쇠고기장조림', capacity: '300g' },
     { code: 'SIMPLE_MINI_BEEF_JANGJORIM_70', brand: '본죽', name: '미니 쇠고기장조림', capacity: '70g' },
     { code: 'SIMPLE_MINI_BUTTER_BEEF_JANGJORIM_70', brand: '본죽', name: '미니 본버터쇠고기장조림', capacity: '70g' },
+    { code: 'SIMPLE_MINI_BUTTER_POTATO_JANGJORIM_75', brand: '본죽', name: '미니 본버터감자장조림', capacity: '75g' },
     { code: 'SIMPLE_QUAIL_JANGJORIM_1000', brand: '본죽', name: '메추리알장조림 대용량 1kg', capacity: '1kg' },
     { code: 'SIMPLE_QUAIL_JANGJORIM_600', brand: '본죽', name: '메추리알장조림 대용량 600g', capacity: '600g' },
     { code: 'SIMPLE_CHUEOTANG_700', brand: '본죽', name: '느리게만든 본남도식추어탕', capacity: '700g' },
