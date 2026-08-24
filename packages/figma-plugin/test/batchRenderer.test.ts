@@ -254,11 +254,49 @@ async function testBatchRenderNeverTouchesSelection() {
   }
 }
 
+async function testAssetNotResolvableSkipsBeforeRenderAttempt() {
+  // asset resolver 진단 수정 회귀 테스트: template binding은 있지만(renderable) 그 상품의
+  // asset을 이 파일에서 전혀 찾을 수 없는 경우(PRODUCT_ASSETS 페이지 없음 + ProductAssetBinding도
+  // 매칭 안 됨), clone부터 시도했다가 'failed'로 끝나는 대신 render 시도 전에
+  // PRODUCT_ASSET_NOT_RESOLVABLE 사유로 skippedNotRenderable 처리되어야 한다.
+  const handle = installMockFigma();
+  try {
+    seedMockTemplate(handle);
+    seedMockGeneratedShell(handle);
+    const products: Product[] = [
+      { id: 'UNRESOLVABLE_PRODUCT', name: 'UNRESOLVABLE_PRODUCT', productGroup: 'simple-meal', assetKey: 'UNRESOLVABLE_PRODUCT' },
+    ];
+
+    const batch = makeBatch([mockWorkOrder('WO-200', [{ productId: 'UNRESOLVABLE_PRODUCT', quantity: 3 }])]);
+
+    const result = await renderBatch(
+      batch,
+      { products, channelPresets: [MOCK_CHANNEL_PRESET], layouts: [MOCK_LAYOUT_VERIFIED_3] },
+      {},
+      { bindings: [MOCK_TEMPLATE_BINDING], generatedSupport: [MOCK_GENERATED_SUPPORT] },
+    );
+
+    assert.equal(result.summary.generatedCount, 0);
+    assert.equal(result.summary.failedCount, 0, 'clone을 시도했다가 실패하는 대신 render 전에 걸러져야 함');
+    assert.equal(result.summary.skippedNotRenderableCount, 1);
+    assert.equal(result.outputs[0].outcome, 'skippedNotRenderable');
+    assert.match(result.outputs[0].message ?? '', /PRODUCT_ASSETS/);
+
+    const verifiedPage = handle.root.children.find((p) => p.name === AUTO_GENERATED_VERIFIED_PAGE_NAME);
+    assert.equal(verifiedPage?.children.length ?? 0, 0, '실패한 clone이 남아있으면 안 됨(애초에 clone을 만들지 않음)');
+
+    console.log('  ✓ asset을 resolve할 수 없는 output은 render를 시도하기 전에 PRODUCT_ASSET_NOT_RESOLVABLE로 스킵됨');
+  } finally {
+    uninstallMockFigma();
+  }
+}
+
 async function main() {
   await testDefaultSkipsReviewRequiredAndError();
   await testIncludeReviewRequiredRendersSupportedGenerated();
   await testNotRenderableSkipsEvenWithOptionOn();
   await testBatchRenderNeverTouchesSelection();
+  await testAssetNotResolvableSkipsBeforeRenderAttempt();
   console.log('batchRenderer.test.ts: 모든 검증 통과');
 }
 

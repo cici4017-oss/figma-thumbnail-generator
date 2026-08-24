@@ -1477,18 +1477,50 @@
     if (fills === figma.mixed || !Array.isArray(fills)) return void 0;
     return fills.find((f) => f.type === "IMAGE" && !!f.imageHash);
   }
-  async function listProductAssets() {
-    const page = findProductAssetsPage();
-    if (!page) return [];
-    await page.loadAsync();
-    return page.children.filter((n) => getImageFill(n)).map((n) => n.name);
+  function findImageHashDeep(node) {
+    const direct = getImageFill(node);
+    if (direct == null ? void 0 : direct.imageHash) return direct.imageHash;
+    if ("children" in node) {
+      for (const child of node.children) {
+        const found = findImageHashDeep(child);
+        if (found) return found;
+      }
+    }
+    return void 0;
   }
-  async function resolveProductAsset(productKey) {
+  function findAssetVariantByKey(assetKey, bindings) {
+    for (const binding of bindings) {
+      const variant = binding.variants.find((v) => v.assetKey === assetKey);
+      if (variant) return variant;
+    }
+    return void 0;
+  }
+  async function resolveFromConfirmedBinding(variant) {
+    const source = variant.source;
+    const nodeId = source.kind === "component-variant" ? source.confirmedNodeId : source.nodeId;
+    if (!nodeId) return null;
+    const node = await figma.getNodeByIdAsync(nodeId);
+    if (!node) {
+      return {
+        ok: false,
+        message: `ProductAssetBinding\uC5D0 \uB4F1\uB85D\uB41C source node(${nodeId})\uB97C \uC774 \uD30C\uC77C\uC5D0\uC11C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4(assetKey "${variant.assetKey}").`
+      };
+    }
+    const imageHash = findImageHashDeep(node);
+    if (!imageHash) {
+      return {
+        ok: false,
+        message: `source node(${nodeId}, "${node.name}")\uC640 \uADF8 \uD558\uC704\uC5D0\uC11C IMAGE fill\uC744 \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4(assetKey "${variant.assetKey}").`
+      };
+    }
+    return { ok: true, imageHash };
+  }
+  async function resolveFromLegacyProductAssetsPage(productKey) {
     const page = findProductAssetsPage();
     if (!page) {
       return {
         ok: false,
-        message: `"${PRODUCT_ASSETS_PAGE_NAME}" \uD398\uC774\uC9C0\uB97C \uC774 \uD30C\uC77C\uC5D0\uC11C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4. \uBA3C\uC800 \uC0C1\uD488\uC744 \uB4F1\uB85D\uD574\uC8FC\uC138\uC694.`
+        message: `"${PRODUCT_ASSETS_PAGE_NAME}" \uD398\uC774\uC9C0\uB97C \uC774 \uD30C\uC77C\uC5D0\uC11C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`
       };
     }
     await page.loadAsync();
@@ -1501,6 +1533,31 @@
       return { ok: false, message: `\uC0C1\uD488 \uB178\uB4DC "${productKey}"\uC5D0 \uC774\uBBF8\uC9C0 fill\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.` };
     }
     return { ok: true, imageHash: imageFill.imageHash };
+  }
+  async function listProductAssets() {
+    const page = findProductAssetsPage();
+    if (!page) return [];
+    await page.loadAsync();
+    return page.children.filter((n) => getImageFill(n)).map((n) => n.name);
+  }
+  async function resolveProductAsset(productKey, bindings = PRODUCT_ASSET_BINDINGS) {
+    var _a;
+    const variant = findAssetVariantByKey(productKey, bindings);
+    let bindingFailureMessage = null;
+    if (variant) {
+      const bindingResult = await resolveFromConfirmedBinding(variant);
+      if (bindingResult == null ? void 0 : bindingResult.ok) return bindingResult;
+      bindingFailureMessage = (_a = bindingResult == null ? void 0 : bindingResult.message) != null ? _a : `ProductAssetBinding(assetKey "${productKey}")\uC5D0 confirmedNodeId\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.`;
+    }
+    const legacyResult = await resolveFromLegacyProductAssetsPage(productKey);
+    if (legacyResult.ok) return legacyResult;
+    if (bindingFailureMessage) {
+      return {
+        ok: false,
+        message: `ProductAssetBinding \uAE30\uBC18 \uC870\uD68C \uC2E4\uD328: ${bindingFailureMessage} / legacy PRODUCT_ASSETS \uC870\uD68C\uB3C4 \uC2E4\uD328: ${legacyResult.message}`
+      };
+    }
+    return legacyResult;
   }
   async function registerProductAssetFromSelection(productKey) {
     const trimmedKey = productKey.trim();
@@ -1869,6 +1926,19 @@
       generatedSupport
     );
   }
+  async function checkAssetResolvability(plan, resolveAsset = resolveProductAsset) {
+    for (const slot of plan.slots) {
+      const result = await resolveAsset(slot.assetKey);
+      if (!result.ok) {
+        return {
+          renderable: false,
+          reason: "PRODUCT_ASSET_NOT_RESOLVABLE",
+          message: `\uC2AC\uB86F "${slot.slotKey}"(assetKey "${slot.assetKey}")\uC758 \uC0C1\uD488 asset\uC744 \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4: ${result.message}`
+        };
+      }
+    }
+    return { renderable: true };
+  }
 
   // src/batchRenderer.ts
   var AUTO_GENERATED_VERIFIED_PAGE_NAME = "AUTO_GENERATED_VERIFIED";
@@ -1887,10 +1957,11 @@
     return wo.lines.map((l) => ({ productId: l.productCode, quantity: l.quantity }));
   }
   async function renderBatch(batch, deps, options = {}, rendererDeps = {}) {
-    var _a, _b, _c;
+    var _a, _b, _c, _d;
     const includeReviewRequired = (_a = options.includeReviewRequired) != null ? _a : false;
     const bindings = (_b = rendererDeps.bindings) != null ? _b : FIGMA_TEMPLATE_BINDINGS;
     const generatedSupport = (_c = rendererDeps.generatedSupport) != null ? _c : GENERATED_RENDERER_SUPPORT;
+    const resolveAsset = (_d = rendererDeps.resolveAsset) != null ? _d : resolveProductAsset;
     const verifiedPage = await findOrCreatePage(AUTO_GENERATED_VERIFIED_PAGE_NAME);
     const reviewPage = await findOrCreatePage(AUTO_GENERATED_REVIEW_PAGE_NAME);
     const outputs = [];
@@ -1948,6 +2019,21 @@
             source,
             outcome: "skippedNotRenderable",
             message: renderability.message
+          });
+          continue;
+        }
+        const assetResolvability = await checkAssetResolvability(plan, resolveAsset);
+        if (!assetResolvability.renderable) {
+          outputs.push({
+            workOrderId: wo.workId,
+            channelLabel: wo.channelLabel,
+            channelPresetId: output.channelPresetId,
+            frameWidth: output.frameWidth,
+            frameHeight: output.frameHeight,
+            layoutKey: plan.layoutKey,
+            source,
+            outcome: "skippedNotRenderable",
+            message: assetResolvability.message
           });
           continue;
         }

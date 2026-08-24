@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { checkRenderability, checkRenderabilityForPlan } from '../src/renderPreflight';
+import { checkRenderability, checkRenderabilityForPlan, checkAssetResolvability } from '../src/renderPreflight';
 import type { FigmaTemplateBinding } from '../src/templateMapper';
 import type { GeneratedRendererSupport } from '../src/generatedRenderer';
 import { FIGMA_TEMPLATE_BINDINGS } from '../src/templateMapper';
@@ -123,8 +123,61 @@ function main() {
     assert.equal(result.renderable, true);
   }
   console.log('  ✓ checkRenderabilityForPlan(CompositionPlan)도 동일하게 판정됨');
+}
 
+function planWithSlots(slots: { slotKey: string; assetKey: string }[]): CompositionPlan {
+  return {
+    layoutKey: 'LAYOUT_02',
+    channelPresetId: 'naver-1000x1000',
+    productGroup: 'simple-meal',
+    thumbnailType: 'basic',
+    slots: slots.map((s) => ({ ...s, role: 'sale' as const })),
+    layoutSource: { kind: 'verified' },
+    generatedLayout: false,
+    reviewRequired: false,
+    options: { logoVariant: 'red' },
+  };
+}
+
+async function testCheckAssetResolvability() {
+  // 9) 모든 슬롯의 asset이 resolve되면 renderable
+  {
+    const plan = planWithSlots([
+      { slotKey: 'slot_1', assetKey: 'OK_A' },
+      { slotKey: 'slot_2', assetKey: 'OK_B' },
+    ]);
+    const result = await checkAssetResolvability(plan, async () => ({ ok: true, imageHash: 'hash' }));
+    assert.equal(result.renderable, true);
+  }
+
+  // 10) 하나라도 asset resolve가 실패하면 renderable:false, reason: PRODUCT_ASSET_NOT_RESOLVABLE
+  {
+    const plan = planWithSlots([
+      { slotKey: 'slot_1', assetKey: 'OK_A' },
+      { slotKey: 'slot_2', assetKey: 'MISSING_ASSET' },
+    ]);
+    const result = await checkAssetResolvability(plan, async (assetKey) =>
+      assetKey === 'MISSING_ASSET'
+        ? { ok: false, message: 'PRODUCT_ASSETS 페이지도 없고 ProductAssetBinding도 없음' }
+        : { ok: true, imageHash: 'hash' },
+    );
+    assert.equal(result.renderable, false);
+    assert.equal(!result.renderable && result.reason, 'PRODUCT_ASSET_NOT_RESOLVABLE');
+    if (!result.renderable) {
+      assert.match(result.message, /slot_2/);
+      assert.match(result.message, /MISSING_ASSET/);
+    }
+  }
+  console.log('  ✓ checkAssetResolvability: 슬롯 asset이 하나라도 resolve 실패하면 PRODUCT_ASSET_NOT_RESOLVABLE로 renderable:false');
+}
+
+async function run() {
+  main();
+  await testCheckAssetResolvability();
   console.log('renderPreflight.test.ts: 모든 검증 통과');
 }
 
-main();
+run().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

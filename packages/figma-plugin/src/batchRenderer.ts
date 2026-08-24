@@ -4,7 +4,8 @@ import type { BatchGenerationRequest, WorkOrder } from '@thumbnail-generator/cor
 import { renderPlan } from './renderer';
 import { FIGMA_TEMPLATE_BINDINGS, type FigmaTemplateBinding } from './templateMapper';
 import { renderGeneratedPlan, GENERATED_RENDERER_SUPPORT, type GeneratedRendererSupport } from './generatedRenderer';
-import { checkRenderabilityForPlan } from './renderPreflight';
+import { checkRenderabilityForPlan, checkAssetResolvability } from './renderPreflight';
+import { resolveProductAsset } from './assetResolver';
 
 /**
  * Excel(BatchGenerationRequest) -> composeChannelOutputs -> 실제 Figma 생성까지 한 번에
@@ -92,12 +93,17 @@ export async function renderBatch(
   batch: BatchGenerationRequest,
   deps: { products: Product[]; channelPresets: ChannelPreset[]; layouts: LayoutDefinition[] },
   options: BatchRenderOptions = {},
-  /** 테스트에서 mock 바인딩/지원 목록을 주입하기 위함(assetMapping.test.ts 등과 동일한 패턴). 생략하면 실제 프로덕션 데이터를 쓴다. */
-  rendererDeps: { bindings?: FigmaTemplateBinding[]; generatedSupport?: GeneratedRendererSupport[] } = {},
+  /** 테스트에서 mock 바인딩/지원 목록/asset resolver를 주입하기 위함(assetMapping.test.ts 등과 동일한 패턴). 생략하면 실제 프로덕션 데이터를 쓴다. */
+  rendererDeps: {
+    bindings?: FigmaTemplateBinding[];
+    generatedSupport?: GeneratedRendererSupport[];
+    resolveAsset?: typeof resolveProductAsset;
+  } = {},
 ): Promise<BatchRenderResult> {
   const includeReviewRequired = options.includeReviewRequired ?? false;
   const bindings = rendererDeps.bindings ?? FIGMA_TEMPLATE_BINDINGS;
   const generatedSupport = rendererDeps.generatedSupport ?? GENERATED_RENDERER_SUPPORT;
+  const resolveAsset = rendererDeps.resolveAsset ?? resolveProductAsset;
 
   const verifiedPage = await findOrCreatePage(AUTO_GENERATED_VERIFIED_PAGE_NAME);
   const reviewPage = await findOrCreatePage(AUTO_GENERATED_REVIEW_PAGE_NAME);
@@ -167,6 +173,26 @@ export async function renderBatch(
           source,
           outcome: 'skippedNotRenderable',
           message: renderability.message,
+        });
+        continue;
+      }
+
+      // 템플릿/generated renderer 지원 여부와 별개로, 실제로 이 파일에서 상품 asset을 찾을 수
+      // 있는지도 렌더 시도 전에 확인한다 — clone부터 만들고 나서 asset lookup 실패로 되돌리는
+      // 대신, "생성 가능"으로 잘못 표시하지 않고 미리 skippedNotRenderable(사유:
+      // PRODUCT_ASSET_NOT_RESOLVABLE)로 분류한다.
+      const assetResolvability = await checkAssetResolvability(plan, resolveAsset);
+      if (!assetResolvability.renderable) {
+        outputs.push({
+          workOrderId: wo.workId,
+          channelLabel: wo.channelLabel,
+          channelPresetId: output.channelPresetId,
+          frameWidth: output.frameWidth,
+          frameHeight: output.frameHeight,
+          layoutKey: plan.layoutKey,
+          source,
+          outcome: 'skippedNotRenderable',
+          message: assetResolvability.message,
         });
         continue;
       }

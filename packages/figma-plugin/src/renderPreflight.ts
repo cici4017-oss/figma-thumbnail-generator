@@ -1,6 +1,7 @@
 import type { CompositionPlan } from '@thumbnail-generator/core';
 import { resolveTemplate, FIGMA_TEMPLATE_BINDINGS, type FigmaTemplateBinding } from './templateMapper';
 import { GENERATED_RENDERER_SUPPORT, type GeneratedRendererSupport } from './generatedRenderer';
+import { resolveProductAsset, type ResolveAssetResult } from './assetResolver';
 
 /**
  * "logical Layout이 verified/generated로 정해졌다"는 것과 "실제 Figma에서 지금 이걸 생성할 수
@@ -16,7 +17,10 @@ import { GENERATED_RENDERER_SUPPORT, type GeneratedRendererSupport } from './gen
  * plan 자체가 만들어지지 않으므로, 이 preflight까지 오는 시점에는 이미 반영되어 있다.
  */
 
-export type RenderabilityReason = 'NO_FIGMA_TEMPLATE_BINDING' | 'GENERATED_RENDERER_NOT_SUPPORTED';
+export type RenderabilityReason =
+  | 'NO_FIGMA_TEMPLATE_BINDING'
+  | 'GENERATED_RENDERER_NOT_SUPPORTED'
+  | 'PRODUCT_ASSET_NOT_RESOLVABLE';
 
 export type RenderabilityResult =
   | { renderable: true }
@@ -94,4 +98,30 @@ export function checkRenderabilityForPlan(
     bindings,
     generatedSupport,
   );
+}
+
+/**
+ * checkRenderability/checkRenderabilityForPlan은 순수 함수라 figma 전역 없이도(Batch Preview
+ * UI에서도) 호출할 수 있지만, 그만큼 "이 파일에서 지금 그 상품 asset을 실제로 찾을 수 있는지"는
+ * 판단하지 못한다(ProductAssetBinding의 confirmedNodeId가 실제로 존재하는지는
+ * figma.getNodeByIdAsync 없이는 알 수 없다). 이 함수가 그 마지막 단계를 담당한다 —
+ * figma 전역이 있는 곳(code.ts/batchRenderer.ts, 실제 렌더 직전)에서만 호출해야 한다.
+ * plan.slots를 전부 확인해서, 하나라도 resolve 실패하면 그 즉시 실패로 판정한다(부분
+ * 렌더/추측 대체 없음).
+ */
+export async function checkAssetResolvability(
+  plan: CompositionPlan,
+  resolveAsset: (assetKey: string) => Promise<ResolveAssetResult> = resolveProductAsset,
+): Promise<RenderabilityResult> {
+  for (const slot of plan.slots) {
+    const result = await resolveAsset(slot.assetKey);
+    if (!result.ok) {
+      return {
+        renderable: false,
+        reason: 'PRODUCT_ASSET_NOT_RESOLVABLE',
+        message: `슬롯 "${slot.slotKey}"(assetKey "${slot.assetKey}")의 상품 asset을 찾을 수 없습니다: ${result.message}`,
+      };
+    }
+  }
+  return { renderable: true };
 }
