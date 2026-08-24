@@ -39,7 +39,11 @@ export type BatchRenderOutcome =
 
 export interface BatchRenderOutputResult {
   workOrderId: string;
+  /** Excel "채널" 열에 적힌 그대로의 표시 라벨(예: "네이버") — export 파일명에 그대로 쓴다. */
+  channelLabel: string | null;
   channelPresetId: string;
+  frameWidth: number;
+  frameHeight: number;
   layoutKey: string | null;
   source: 'verified' | 'generated' | null;
   outcome: BatchRenderOutcome;
@@ -121,7 +125,10 @@ export async function renderBatch(
         // 또는 error: 슬롯 수 초과 등) — 둘 다 렌더링을 시도할 대상이 없다.
         outputs.push({
           workOrderId: wo.workId,
+          channelLabel: wo.channelLabel,
           channelPresetId: output.channelPresetId,
+          frameWidth: output.frameWidth,
+          frameHeight: output.frameHeight,
           layoutKey: null,
           source: null,
           outcome: output.result.reviewRequired ? 'skippedReviewRequired' : 'skippedError',
@@ -136,7 +143,10 @@ export async function renderBatch(
       if (plan.reviewRequired && !includeReviewRequired) {
         outputs.push({
           workOrderId: wo.workId,
+          channelLabel: wo.channelLabel,
           channelPresetId: output.channelPresetId,
+          frameWidth: output.frameWidth,
+          frameHeight: output.frameHeight,
           layoutKey: plan.layoutKey,
           source,
           outcome: 'skippedReviewRequired',
@@ -149,7 +159,10 @@ export async function renderBatch(
       if (!renderability.renderable) {
         outputs.push({
           workOrderId: wo.workId,
+          channelLabel: wo.channelLabel,
           channelPresetId: output.channelPresetId,
+          frameWidth: output.frameWidth,
+          frameHeight: output.frameHeight,
           layoutKey: plan.layoutKey,
           source,
           outcome: 'skippedNotRenderable',
@@ -163,7 +176,10 @@ export async function renderBatch(
       if (!renderResult.ok) {
         outputs.push({
           workOrderId: wo.workId,
+          channelLabel: wo.channelLabel,
           channelPresetId: output.channelPresetId,
+          frameWidth: output.frameWidth,
+          frameHeight: output.frameHeight,
           layoutKey: plan.layoutKey,
           source,
           outcome: 'failed',
@@ -182,7 +198,10 @@ export async function renderBatch(
 
       outputs.push({
         workOrderId: wo.workId,
+        channelLabel: wo.channelLabel,
         channelPresetId: output.channelPresetId,
+        frameWidth: output.frameWidth,
+        frameHeight: output.frameHeight,
         layoutKey: plan.layoutKey,
         source,
         outcome: 'generated',

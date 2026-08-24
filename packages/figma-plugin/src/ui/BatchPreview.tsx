@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
-import { DOMAIN_PRODUCTS, CHANNEL_PRESETS, LAYOUTS } from '@thumbnail-generator/core';
+import React, { useEffect, useState } from 'react';
+// JSZip은 여기(UI 번들)에서만 import한다 — code.ts(Figma main thread)는 이 파일을 import하지
+// 않으므로 JSZip이 code.js에 섞여 들어가지 않는다(exceljs를 core/import로 분리한 것과 동일한
+// 원칙: 무거운 라이브러리는 실제로 쓰는 쪽 번들에만 있어야 한다).
+import JSZip from 'jszip';
 import {
   readWorkOrderSheet,
   parseWorkOrderRows,
@@ -11,7 +14,23 @@ import {
   type BatchPreviewStatus,
 } from '@thumbnail-generator/core/import';
 import { checkRenderability } from '../renderPreflight';
-import { renderBatch, type BatchRenderResult } from '../batchRenderer';
+import type { BatchRenderResult } from '../batchRenderer';
+import { selectExportableOutputs, buildExportItems, buildZipFileName } from '../exportNaming';
+
+/**
+ * batchRenderer.ts(renderBatch)와 exportRenderer.ts(exportNodesAsJpg)는 figma 전역이 있어야
+ * 동작한다 — 이 컴포넌트는 code.ts가 showUI로 띄우는 iframe(ui.html) 안에서 실행되므로 figma
+ * 전역이 없다. 그래서 직접 호출하지 않고 code.ts로 postMessage를 보내 실행을 위임하고,
+ * 응답을 window.onmessage로 받는다(main.tsx의 PilotApp과 동일한 패턴).
+ */
+function post(message: unknown) {
+  parent.postMessage({ pluginMessage: message }, '*');
+}
+
+type PluginToUiMessage =
+  | { type: 'batchRenderResult'; result: BatchRenderResult }
+  | { type: 'exportBatchResult'; files: { fileName: string; bytes: Uint8Array }[]; failures: { fileName: string; message: string }[] }
+  | { type: 'error'; message: string };
 
 const STATUS_LABEL: Record<BatchPreviewStatus, string> = {
   ready: '생성가능',
@@ -54,6 +73,17 @@ function renderabilityLabel(output: BatchPreviewOutput): { text: string; color: 
 const cellStyle: React.CSSProperties = { border: '1px solid #eee', padding: '4px 6px', verticalAlign: 'top' };
 const groupCellStyle: React.CSSProperties = { ...cellStyle, background: '#fafafa', fontWeight: 600 };
 
+function downloadBlob(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 export function BatchPreview() {
   const [preview, setPreview] = useState<BatchPreviewResult | null>(null);
   const [batch, setBatch] = useState<BatchGenerationRequest | null>(null);
@@ -62,6 +92,45 @@ export function BatchPreview() {
   const [includeReviewRequired, setIncludeReviewRequired] = useState(false);
   const [rendering, setRendering] = useState(false);
   const [renderResult, setRenderResult] = useState<BatchRenderResult | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportNotice, setExportNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    window.onmessage = (event: MessageEvent) => {
+      const msg = event.data.pluginMessage as PluginToUiMessage | undefined;
+      if (!msg) return;
+
+      if (msg.type === 'batchRenderResult') {
+        setRenderResult(msg.result);
+        setRendering(false);
+      } else if (msg.type === 'exportBatchResult') {
+        setExporting(false);
+        if (msg.files.length === 0) {
+          setExportNotice('export된 파일이 없습니다.');
+          return;
+        }
+        const zip = new JSZip();
+        for (const file of msg.files) {
+          zip.file(file.fileName, file.bytes);
+        }
+        zip.generateAsync({ type: 'blob' }).then((blob) => {
+          downloadBlob(blob, buildZipFileName());
+          const failedNote =
+            msg.failures.length > 0
+              ? ` (실패 ${msg.failures.length}건: ${msg.failures.map((f) => f.fileName).join(', ')})`
+              : '';
+          setExportNotice(`JPG ${msg.files.length}개를 ZIP으로 저장했습니다.${failedNote}`);
+        });
+      } else if (msg.type === 'error') {
+        setError(msg.message);
+        setRendering(false);
+        setExporting(false);
+      }
+    };
+    return () => {
+      window.onmessage = null;
+    };
+  }, []);
 
   const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -70,6 +139,7 @@ export function BatchPreview() {
     setPreview(null);
     setBatch(null);
     setRenderResult(null);
+    setExportNotice(null);
     try {
       const bytes = await file.arrayBuffer();
       const rows = await readWorkOrderSheet(bytes);
@@ -81,23 +151,25 @@ export function BatchPreview() {
     }
   };
 
-  const onRenderBatch = async () => {
+  const onRenderBatch = () => {
     if (!batch) return;
     setRendering(true);
     setError(null);
-    try {
-      const result = await renderBatch(
-        batch,
-        { products: DOMAIN_PRODUCTS, channelPresets: CHANNEL_PRESETS, layouts: LAYOUTS },
-        { includeReviewRequired },
-      );
-      setRenderResult(result);
-    } catch (err) {
-      setError(`Figma 생성 중 오류: ${(err as Error).message}`);
-    } finally {
-      setRendering(false);
-    }
+    setRenderResult(null);
+    setExportNotice(null);
+    post({ type: 'renderBatch', batch, includeReviewRequired });
   };
+
+  const onExportBatch = () => {
+    const items = buildExportItems(renderResult);
+    if (items.length === 0) return;
+    setExporting(true);
+    setError(null);
+    setExportNotice(null);
+    post({ type: 'exportBatch', items });
+  };
+
+  const generatedCount = selectExportableOutputs(renderResult).length;
 
   // 필터는 작업ID(row) 단위 요약 상태(overallStatus) 기준 — 개별 output의 상태는
   // 항상 각 output 줄에 그대로 표시된다(요약이 개별 상태를 덮어쓰지 않는다).
@@ -149,15 +221,28 @@ export function BatchPreview() {
           </div>
 
           {renderResult && (
-            <p style={{ margin: '0 0 8px 0', fontSize: 12 }}>
-              실제 생성 {renderResult.summary.generatedCount}건 / 검토 스킵{' '}
-              {renderResult.summary.skippedReviewRequiredCount}건 / 미지원 스킵{' '}
-              {renderResult.summary.skippedNotRenderableCount}건 / 오류 스킵{' '}
-              {renderResult.summary.skippedErrorCount}건
-              {renderResult.summary.failedCount > 0 && (
-                <span style={{ color: STATUS_COLOR.error }}> / 렌더 실패 {renderResult.summary.failedCount}건</span>
+            <>
+              <p style={{ margin: '0 0 8px 0', fontSize: 12 }}>
+                실제 생성 {renderResult.summary.generatedCount}건 / 검토 스킵{' '}
+                {renderResult.summary.skippedReviewRequiredCount}건 / 미지원 스킵{' '}
+                {renderResult.summary.skippedNotRenderableCount}건 / 오류 스킵{' '}
+                {renderResult.summary.skippedErrorCount}건
+                {renderResult.summary.failedCount > 0 && (
+                  <span style={{ color: STATUS_COLOR.error }}> / 렌더 실패 {renderResult.summary.failedCount}건</span>
+                )}
+              </p>
+
+              {generatedCount > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '0 0 8px 0' }}>
+                  <span style={{ fontWeight: 600 }}>{generatedCount}개 생성 완료</span>
+                  <button onClick={onExportBatch} disabled={exporting}>
+                    {exporting ? '내보내는 중…' : 'JPEG 일괄 저장'}
+                  </button>
+                </div>
               )}
-            </p>
+
+              {exportNotice && <p style={{ margin: '0 0 8px 0', fontSize: 12, color: '#1e8e3e' }}>{exportNotice}</p>}
+            </>
           )}
 
           <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>

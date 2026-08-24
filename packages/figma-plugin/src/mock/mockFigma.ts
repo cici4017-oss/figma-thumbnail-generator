@@ -84,6 +84,15 @@ export class MockNode {
   async loadAsync(): Promise<void> {
     // 모의 구현에서는 항상 이미 메모리에 있으므로 아무것도 할 필요가 없다.
   }
+
+  /**
+   * 실제 이미지를 인코딩하지 않는 아주 단순한 모의 구현 — exportRenderer.ts가 "어떤 노드를
+   * 어떤 포맷/크기로 export했는지"만 결정론적으로 확인할 수 있으면 충분하다.
+   */
+  async exportAsync(settings?: { format?: string }): Promise<Uint8Array> {
+    const marker = `${settings?.format ?? 'PNG'}:${this.name}:${this.width}x${this.height}`;
+    return new TextEncoder().encode(marker);
+  }
 }
 
 export const MOCK_FIGMA_MIXED = Symbol('figma.mixed');

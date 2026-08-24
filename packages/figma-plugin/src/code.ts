@@ -4,10 +4,17 @@ import {
   type ProductGroupId,
   CHANNEL_PRESETS,
   LAYOUTS,
+  DOMAIN_PRODUCTS,
   composePlan,
 } from '@thumbnail-generator/core';
+// 타입만 가져온다 — BatchGenerationRequest는 '/import'(exceljs 포함)에 정의되어 있지만,
+// `import type`은 esbuild가 완전히 지워버려서 code.js 번들에 exceljs가 섞여 들어가지 않는다.
+// (실제 엑셀 파싱은 UI 쪽에서 이미 끝내고, code.ts는 파싱된 결과만 받는다.)
+import type { BatchGenerationRequest } from '@thumbnail-generator/core/import';
 import { renderPlan } from './renderer';
 import { listProductAssets, registerProductAssetFromSelection } from './assetResolver';
+import { renderBatch, type BatchRenderResult } from './batchRenderer';
+import { exportNodesAsJpg, type ExportRequestItem } from './exportRenderer';
 
 figma.showUI(__html__, { width: 460, height: 560 });
 
@@ -21,13 +28,17 @@ const CURRENT_FILE_PRODUCT_GROUP: ProductGroupId = 'simple-meal';
 type UiToPluginMessage =
   | { type: 'ready' }
   | { type: 'generate'; productKey: string; quantity: number }
-  | { type: 'register'; productKey: string };
+  | { type: 'register'; productKey: string }
+  | { type: 'renderBatch'; batch: BatchGenerationRequest; includeReviewRequired: boolean }
+  | { type: 'exportBatch'; items: ExportRequestItem[] };
 
 type PluginToUiMessage =
   | { type: 'products'; products: string[] }
   | { type: 'success'; nodeId: string }
   | { type: 'registered'; productKey: string }
-  | { type: 'error'; message: string };
+  | { type: 'error'; message: string }
+  | { type: 'batchRenderResult'; result: BatchRenderResult }
+  | { type: 'exportBatchResult'; files: { fileName: string; bytes: Uint8Array }[]; failures: { fileName: string; message: string }[] };
 
 function post(message: PluginToUiMessage) {
   figma.ui.postMessage(message);
@@ -101,5 +112,30 @@ figma.ui.onmessage = async (msg: UiToPluginMessage) => {
     } catch (e) {
       post({ type: 'error', message: `예상하지 못한 오류: ${(e as Error).message}` });
     }
+    return;
+  }
+
+  if (msg.type === 'renderBatch') {
+    try {
+      const result = await renderBatch(
+        msg.batch,
+        { products: DOMAIN_PRODUCTS, channelPresets: CHANNEL_PRESETS, layouts: LAYOUTS },
+        { includeReviewRequired: msg.includeReviewRequired },
+      );
+      post({ type: 'batchRenderResult', result });
+    } catch (e) {
+      post({ type: 'error', message: `Batch Render 중 오류: ${(e as Error).message}` });
+    }
+    return;
+  }
+
+  if (msg.type === 'exportBatch') {
+    try {
+      const { files, failures } = await exportNodesAsJpg(msg.items);
+      post({ type: 'exportBatchResult', files, failures });
+    } catch (e) {
+      post({ type: 'error', message: `JPEG export 중 오류: ${(e as Error).message}` });
+    }
+    return;
   }
 };

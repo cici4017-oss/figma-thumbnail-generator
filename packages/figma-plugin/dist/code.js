@@ -1,5 +1,37 @@
 "use strict";
 (() => {
+  var __defProp = Object.defineProperty;
+  var __defProps = Object.defineProperties;
+  var __getOwnPropDescs = Object.getOwnPropertyDescriptors;
+  var __getOwnPropSymbols = Object.getOwnPropertySymbols;
+  var __hasOwnProp = Object.prototype.hasOwnProperty;
+  var __propIsEnum = Object.prototype.propertyIsEnumerable;
+  var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+  var __spreadValues = (a, b) => {
+    for (var prop in b || (b = {}))
+      if (__hasOwnProp.call(b, prop))
+        __defNormalProp(a, prop, b[prop]);
+    if (__getOwnPropSymbols)
+      for (var prop of __getOwnPropSymbols(b)) {
+        if (__propIsEnum.call(b, prop))
+          __defNormalProp(a, prop, b[prop]);
+      }
+    return a;
+  };
+  var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
+  var __objRest = (source, exclude) => {
+    var target = {};
+    for (var prop in source)
+      if (__hasOwnProp.call(source, prop) && exclude.indexOf(prop) < 0)
+        target[prop] = source[prop];
+    if (source != null && __getOwnPropSymbols)
+      for (var prop of __getOwnPropSymbols(source)) {
+        if (exclude.indexOf(prop) < 0 && __propIsEnum.call(source, prop))
+          target[prop] = source[prop];
+      }
+    return target;
+  };
+
   // ../core/src/domain/productAsset.ts
   var DEFAULT_PRODUCT_ASSET_KIND = "package";
 
@@ -292,6 +324,27 @@
         }
       }
     };
+  }
+
+  // ../core/src/engine/composeChannelOutputs.ts
+  function composeChannelOutputs(request, deps) {
+    const _a = request, { channelId } = _a, requestWithoutChannel = __objRest(_a, ["channelId"]);
+    const presets = deps.channelPresets.filter((p) => p.channelId === channelId);
+    if (presets.length === 0) {
+      return {
+        ok: false,
+        reason: "CHANNEL_NOT_FOUND",
+        message: `channelId "${channelId}"\uC5D0 \uB4F1\uB85D\uB41C ChannelPreset\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.`
+      };
+    }
+    const outputs = presets.map((preset) => ({
+      channelPresetId: preset.id,
+      aspectRatioFamily: preset.aspectRatioFamily,
+      frameWidth: preset.frameWidth,
+      frameHeight: preset.frameHeight,
+      result: composePlan(__spreadProps(__spreadValues({}, requestWithoutChannel), { channelPresetId: preset.id }), deps)
+    }));
+    return { ok: true, outputs };
   }
 
   // ../core/src/data/channelPresets.ts
@@ -1551,6 +1604,367 @@
     return { ok: true, nodeId: clone.id };
   }
 
+  // src/generatedLayoutGeometry.ts
+  var SUPPORTED_GENERATED_FAMILIES = [
+    "row-linear",
+    "diagonal-cascade",
+    "pyramid-stack"
+  ];
+  var MARGIN = 60;
+  var GAP = 20;
+  function rowLinear(slotKeys, frameWidth, frameHeight) {
+    const n = slotKeys.length;
+    const available = frameWidth - MARGIN * 2;
+    const size = (available - (n - 1) * GAP) / n;
+    const y = (frameHeight - size) / 2;
+    return slotKeys.map((slotKey, i) => ({ slotKey, x: MARGIN + i * (size + GAP), y, size }));
+  }
+  function diagonalCascade(slotKeys, frameWidth, frameHeight) {
+    const n = slotKeys.length;
+    const span = Math.min(frameWidth, frameHeight) - MARGIN * 2;
+    const size = (span - (n - 1) * GAP) / n;
+    const step = size + GAP;
+    return slotKeys.map((slotKey, i) => ({
+      slotKey,
+      x: MARGIN + i * step,
+      y: MARGIN + i * step,
+      size
+    }));
+  }
+  function pyramidStack(slotKeys, frameWidth, frameHeight) {
+    const n = slotKeys.length;
+    const row1Count = Math.ceil(n / 2);
+    const row2Count = n - row1Count;
+    const sizeForRow = (count) => (frameWidth - MARGIN * 2 - (count - 1) * GAP) / count;
+    const size = row2Count > 0 ? Math.min(sizeForRow(row1Count), sizeForRow(row2Count)) : sizeForRow(row1Count);
+    const rowGapY = 30;
+    const totalHeight = row2Count > 0 ? size * 2 + rowGapY : size;
+    const topY = (frameHeight - totalHeight) / 2;
+    function layoutRow(keys, rowY) {
+      const rowWidth = keys.length * size + (keys.length - 1) * GAP;
+      const startX = (frameWidth - rowWidth) / 2;
+      return keys.map((slotKey, i) => ({ slotKey, x: startX + i * (size + GAP), y: rowY, size }));
+    }
+    const row1Keys = slotKeys.slice(0, row1Count);
+    const row2Keys = slotKeys.slice(row1Count);
+    const row1 = layoutRow(row1Keys, topY);
+    const row2 = row2Count > 0 ? layoutRow(row2Keys, topY + size + rowGapY) : [];
+    return [...row1, ...row2];
+  }
+  function computeGeneratedSlotRects(input) {
+    if (input.slotKeys.length === 0) {
+      throw new Error("slotKeys\uAC00 \uBE44\uC5B4 \uC788\uC2B5\uB2C8\uB2E4.");
+    }
+    switch (input.familyId) {
+      case "row-linear":
+        return rowLinear(input.slotKeys, input.frameWidth, input.frameHeight);
+      case "diagonal-cascade":
+        return diagonalCascade(input.slotKeys, input.frameWidth, input.frameHeight);
+      case "pyramid-stack":
+        return pyramidStack(input.slotKeys, input.frameWidth, input.frameHeight);
+      default:
+        throw new Error(
+          `generated family "${input.familyId}"\uC5D0 \uB300\uD55C \uBC30\uCE58 \uACF5\uC2DD\uC774 \uC544\uC9C1 \uAD6C\uD604\uB418\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4(\uC9C0\uC6D0: ${SUPPORTED_GENERATED_FAMILIES.join(", ")}).`
+        );
+    }
+  }
+
+  // src/generatedRenderer.ts
+  var GENERATED_RENDERER_SUPPORT = [
+    {
+      channelPresetId: "naver-1000x1000",
+      productGroup: "simple-meal",
+      thumbnailType: "basic",
+      familyIds: SUPPORTED_GENERATED_FAMILIES,
+      baseShellFrameName: "\uB124\uC774\uBC84_\uC18C\uACE0\uAE30\uC7A5\uC870\uB9BC130_1",
+      baseShellFrameNodeId: "69:307",
+      existingSlotLayerNames: ["image 312"]
+    }
+  ];
+  var RESULT_GAP2 = 120;
+  var GENERATED_SLOT_LAYER_PREFIX = "generated_slot_";
+  function findSupport(plan, support) {
+    if (plan.layoutSource.kind !== "generated") return void 0;
+    const familyId = plan.layoutSource.params.familyId;
+    return support.find(
+      (s) => s.channelPresetId === plan.channelPresetId && s.productGroup === plan.productGroup && s.thumbnailType === plan.thumbnailType && s.familyIds.includes(familyId)
+    );
+  }
+  function findShellFrame(s) {
+    if (s.baseShellFrameNodeId) {
+      const byId = figma.getNodeById(s.baseShellFrameNodeId);
+      if (byId && byId.type === "FRAME") return byId;
+    }
+    const byName = figma.currentPage.findOne((n) => n.type === "FRAME" && n.name === s.baseShellFrameName);
+    return byName && byName.type === "FRAME" ? byName : null;
+  }
+  async function renderGeneratedPlan(plan, support = GENERATED_RENDERER_SUPPORT) {
+    var _a;
+    if (plan.layoutSource.kind !== "generated") {
+      return { ok: false, message: "generated plan\uC774 \uC544\uB2D9\uB2C8\uB2E4(verified plan\uC740 renderer.ts\uB97C \uC4F0\uC138\uC694)." };
+    }
+    const matched = findSupport(plan, support);
+    if (!matched) {
+      return {
+        ok: false,
+        message: `channelPresetId "${plan.channelPresetId}"(${plan.productGroup}/${plan.thumbnailType}, family "${plan.layoutSource.params.familyId}")\uB294 generated renderer\uAC00 \uC544\uC9C1 \uC9C0\uC6D0\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.`
+      };
+    }
+    const shellFrame = findShellFrame(matched);
+    if (!shellFrame) {
+      return {
+        ok: false,
+        message: `generated renderer\uC758 base shell \uD504\uB808\uC784 "${matched.baseShellFrameName}"\uC744(\uB97C) \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`
+      };
+    }
+    const { familyId, slotCount } = plan.layoutSource.params;
+    if (slotCount !== plan.slots.length) {
+      return {
+        ok: false,
+        message: `\uC2AC\uB86F \uC218 \uBD88\uC77C\uCE58: layoutSource.params.slotCount=${slotCount}, plan.slots.length=${plan.slots.length}`
+      };
+    }
+    let rects;
+    try {
+      rects = computeGeneratedSlotRects({
+        familyId,
+        slotKeys: plan.slots.map((s) => s.slotKey),
+        frameWidth: shellFrame.width,
+        frameHeight: shellFrame.height
+      });
+    } catch (err) {
+      return { ok: false, message: err.message };
+    }
+    const clone = shellFrame.clone();
+    clone.name = `${shellFrame.name} (generated ${familyId} ${slotCount} \uC790\uB3D9\uC0DD\uC131 \uACB0\uACFC)`;
+    clone.x = shellFrame.x + shellFrame.width + RESULT_GAP2;
+    clone.y = shellFrame.y;
+    (_a = shellFrame.parent) == null ? void 0 : _a.appendChild(clone);
+    for (const layerName of matched.existingSlotLayerNames) {
+      const oldSlot = clone.findOne((n) => n.name === layerName);
+      oldSlot == null ? void 0 : oldSlot.remove();
+    }
+    for (const slot of plan.slots) {
+      const rect = rects.find((r) => r.slotKey === slot.slotKey);
+      if (!rect) {
+        clone.remove();
+        return { ok: false, message: `\uC2AC\uB86F "${slot.slotKey}"\uC5D0 \uB300\uD55C generated geometry\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.` };
+      }
+      const resolved = await resolveProductAsset(slot.assetKey);
+      if (!resolved.ok) {
+        clone.remove();
+        return { ok: false, message: resolved.message };
+      }
+      const node = figma.createRectangle();
+      node.name = `${GENERATED_SLOT_LAYER_PREFIX}${slot.slotKey}`;
+      node.resize(rect.size, rect.size);
+      node.x = rect.x;
+      node.y = rect.y;
+      node.fills = [{ type: "IMAGE", imageHash: resolved.imageHash, scaleMode: "FILL" }];
+      clone.appendChild(node);
+    }
+    figma.currentPage.selection = [clone];
+    figma.viewport.scrollAndZoomIntoView([clone]);
+    return { ok: true, nodeId: clone.id, familyId, slotCount };
+  }
+
+  // src/renderPreflight.ts
+  function checkRenderability(input, bindings = FIGMA_TEMPLATE_BINDINGS, generatedSupport = GENERATED_RENDERER_SUPPORT) {
+    if (input.layoutSource === "verified") {
+      const binding = resolveTemplate(input.layoutKey, input.channelPresetId, bindings);
+      if (!binding) {
+        return {
+          renderable: false,
+          reason: "NO_FIGMA_TEMPLATE_BINDING",
+          message: `layoutKey "${input.layoutKey}" + channelPresetId "${input.channelPresetId}"\uC5D0 \uB300\uD55C \uC2E4\uC81C Figma template binding\uC774 \uC5C6\uC5B4 \uC9C0\uAE08\uC740 \uC0DD\uC131\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`
+        };
+      }
+      return { renderable: true };
+    }
+    const supported = generatedSupport.some(
+      (s) => {
+        var _a;
+        return s.channelPresetId === input.channelPresetId && s.familyIds.includes((_a = input.arrangementFamily) != null ? _a : "") && (input.productGroup === void 0 || s.productGroup === input.productGroup) && (input.thumbnailType === void 0 || s.thumbnailType === input.thumbnailType);
+      }
+    );
+    if (!supported) {
+      return {
+        renderable: false,
+        reason: "GENERATED_RENDERER_NOT_SUPPORTED",
+        message: `channelPresetId "${input.channelPresetId}"(family "${input.arrangementFamily}")\uB294 generated renderer\uAC00 \uC544\uC9C1 \uC9C0\uC6D0\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.`
+      };
+    }
+    return { renderable: true };
+  }
+  function checkRenderabilityForPlan(plan, bindings = FIGMA_TEMPLATE_BINDINGS, generatedSupport = GENERATED_RENDERER_SUPPORT) {
+    return checkRenderability(
+      {
+        layoutKey: plan.layoutKey,
+        channelPresetId: plan.channelPresetId,
+        layoutSource: plan.layoutSource.kind,
+        arrangementFamily: plan.layoutSource.kind === "generated" ? plan.layoutSource.params.familyId : null,
+        productGroup: plan.productGroup,
+        thumbnailType: plan.thumbnailType
+      },
+      bindings,
+      generatedSupport
+    );
+  }
+
+  // src/batchRenderer.ts
+  var AUTO_GENERATED_VERIFIED_PAGE_NAME = "AUTO_GENERATED_VERIFIED";
+  var AUTO_GENERATED_REVIEW_PAGE_NAME = "AUTO_GENERATED_REVIEW";
+  async function findOrCreatePage(name) {
+    const existing = figma.root.children.find((p) => p.type === "PAGE" && p.name === name);
+    const page = existing && existing.type === "PAGE" ? existing : figma.createPage();
+    if (!existing) page.name = name;
+    await page.loadAsync();
+    return page;
+  }
+  function buildFrameName(workOrderId, channelPresetId, layoutKey, source) {
+    return `${workOrderId}__${channelPresetId}__${layoutKey}__${source === "verified" ? "VERIFIED" : "GENERATED"}`;
+  }
+  function buildItems(wo) {
+    return wo.lines.map((l) => ({ productId: l.productCode, quantity: l.quantity }));
+  }
+  async function renderBatch(batch, deps, options = {}, rendererDeps = {}) {
+    var _a, _b, _c;
+    const includeReviewRequired = (_a = options.includeReviewRequired) != null ? _a : false;
+    const bindings = (_b = rendererDeps.bindings) != null ? _b : FIGMA_TEMPLATE_BINDINGS;
+    const generatedSupport = (_c = rendererDeps.generatedSupport) != null ? _c : GENERATED_RENDERER_SUPPORT;
+    const verifiedPage = await findOrCreatePage(AUTO_GENERATED_VERIFIED_PAGE_NAME);
+    const reviewPage = await findOrCreatePage(AUTO_GENERATED_REVIEW_PAGE_NAME);
+    const outputs = [];
+    for (const wo of batch.workOrders) {
+      if (wo.status !== "valid") continue;
+      const fanout = composeChannelOutputs(
+        {
+          items: buildItems(wo),
+          channelId: wo.channelId,
+          options: wo.badge === null ? void 0 : { badge: { enabled: wo.badge } }
+        },
+        deps
+      );
+      if (!fanout.ok) continue;
+      for (const output of fanout.outputs) {
+        if (!output.result.ok) {
+          outputs.push({
+            workOrderId: wo.workId,
+            channelLabel: wo.channelLabel,
+            channelPresetId: output.channelPresetId,
+            frameWidth: output.frameWidth,
+            frameHeight: output.frameHeight,
+            layoutKey: null,
+            source: null,
+            outcome: output.result.reviewRequired ? "skippedReviewRequired" : "skippedError",
+            message: output.result.message
+          });
+          continue;
+        }
+        const plan = output.result.plan;
+        const source = plan.layoutSource.kind;
+        if (plan.reviewRequired && !includeReviewRequired) {
+          outputs.push({
+            workOrderId: wo.workId,
+            channelLabel: wo.channelLabel,
+            channelPresetId: output.channelPresetId,
+            frameWidth: output.frameWidth,
+            frameHeight: output.frameHeight,
+            layoutKey: plan.layoutKey,
+            source,
+            outcome: "skippedReviewRequired",
+            message: "reviewRequired(generated) plan \u2014 includeReviewRequired \uC635\uC158\uC774 \uAEBC\uC838 \uC788\uC5B4 \uAE30\uBCF8\uC801\uC73C\uB85C \uC0DD\uC131\uD558\uC9C0 \uC54A\uC74C"
+          });
+          continue;
+        }
+        const renderability = checkRenderabilityForPlan(plan, bindings, generatedSupport);
+        if (!renderability.renderable) {
+          outputs.push({
+            workOrderId: wo.workId,
+            channelLabel: wo.channelLabel,
+            channelPresetId: output.channelPresetId,
+            frameWidth: output.frameWidth,
+            frameHeight: output.frameHeight,
+            layoutKey: plan.layoutKey,
+            source,
+            outcome: "skippedNotRenderable",
+            message: renderability.message
+          });
+          continue;
+        }
+        const renderResult = source === "verified" ? await renderPlan(plan, bindings) : await renderGeneratedPlan(plan, generatedSupport);
+        if (!renderResult.ok) {
+          outputs.push({
+            workOrderId: wo.workId,
+            channelLabel: wo.channelLabel,
+            channelPresetId: output.channelPresetId,
+            frameWidth: output.frameWidth,
+            frameHeight: output.frameHeight,
+            layoutKey: plan.layoutKey,
+            source,
+            outcome: "failed",
+            message: renderResult.message
+          });
+          continue;
+        }
+        const node = await figma.getNodeByIdAsync(renderResult.nodeId);
+        const frameName = buildFrameName(wo.workId, output.channelPresetId, plan.layoutKey, source);
+        if (node) {
+          node.name = frameName;
+          const targetPage = source === "verified" ? verifiedPage : reviewPage;
+          targetPage.appendChild(node);
+        }
+        outputs.push({
+          workOrderId: wo.workId,
+          channelLabel: wo.channelLabel,
+          channelPresetId: output.channelPresetId,
+          frameWidth: output.frameWidth,
+          frameHeight: output.frameHeight,
+          layoutKey: plan.layoutKey,
+          source,
+          outcome: "generated",
+          nodeId: renderResult.nodeId,
+          frameName
+        });
+      }
+    }
+    const summary = {
+      totalWorkOrders: batch.workOrders.length,
+      totalOutputs: outputs.length,
+      generatedCount: outputs.filter((o) => o.outcome === "generated").length,
+      skippedReviewRequiredCount: outputs.filter((o) => o.outcome === "skippedReviewRequired").length,
+      skippedNotRenderableCount: outputs.filter((o) => o.outcome === "skippedNotRenderable").length,
+      skippedErrorCount: outputs.filter((o) => o.outcome === "skippedError").length,
+      failedCount: outputs.filter((o) => o.outcome === "failed").length
+    };
+    return { summary, outputs };
+  }
+
+  // src/exportRenderer.ts
+  async function exportNodesAsJpg(items) {
+    const files = [];
+    const failures = [];
+    for (const item of items) {
+      const node = await figma.getNodeByIdAsync(item.nodeId);
+      if (!node) {
+        failures.push({ fileName: item.fileName, message: `\uB178\uB4DC "${item.nodeId}"\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.` });
+        continue;
+      }
+      if (!("exportAsync" in node) || !("width" in node) || !("height" in node)) {
+        failures.push({ fileName: item.fileName, message: `\uB178\uB4DC "${node.name}"\uB294 JPG export\uB97C \uC9C0\uC6D0\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.` });
+        continue;
+      }
+      try {
+        const bytes = await node.exportAsync({ format: "JPG" });
+        const { width, height } = node;
+        files.push({ fileName: item.fileName, bytes, width, height });
+      } catch (e) {
+        failures.push({ fileName: item.fileName, message: e.message });
+      }
+    }
+    return { files, failures };
+  }
+
   // src/code.ts
   figma.showUI(__html__, { width: 460, height: 560 });
   var CURRENT_FILE_PRODUCT_GROUP = "simple-meal";
@@ -1614,6 +2028,29 @@
       } catch (e) {
         post({ type: "error", message: `\uC608\uC0C1\uD558\uC9C0 \uBABB\uD55C \uC624\uB958: ${e.message}` });
       }
+      return;
+    }
+    if (msg.type === "renderBatch") {
+      try {
+        const result = await renderBatch(
+          msg.batch,
+          { products: DOMAIN_PRODUCTS, channelPresets: CHANNEL_PRESETS, layouts: LAYOUTS },
+          { includeReviewRequired: msg.includeReviewRequired }
+        );
+        post({ type: "batchRenderResult", result });
+      } catch (e) {
+        post({ type: "error", message: `Batch Render \uC911 \uC624\uB958: ${e.message}` });
+      }
+      return;
+    }
+    if (msg.type === "exportBatch") {
+      try {
+        const { files, failures } = await exportNodesAsJpg(msg.items);
+        post({ type: "exportBatchResult", files, failures });
+      } catch (e) {
+        post({ type: "error", message: `JPEG export \uC911 \uC624\uB958: ${e.message}` });
+      }
+      return;
     }
   };
 })();
