@@ -40,6 +40,10 @@ export const PRODUCT_ASSET_BINDINGS: ProductAssetBinding[] = [
         assetKey: 'SIMPLE_BEEF_JANGJORIM_130',
         status: 'confirmed',
         note: 'screenshot으로 실제 verified 썸네일(LAYOUT_01~10)의 패키지 사진과 동일함을 확인',
+        // 상품별 visible size 비교(2026-08-25): 정사각형 소스 자체는 743x743로 동일하지만,
+        // 상단 브랜드/문구 영역이 커서 같은 슬롯에서 시그니처 반찬류보다 패키지가 작아 보임을
+        // 실제 3종 동일 슬롯 비교 screenshot으로 확인 → 22% 확대(중앙 기준)로 보정.
+        presentation: { visualScale: 1.22, offsetX: 0, offsetY: 0 },
       },
       {
         assetKind: 'plated-side',
@@ -67,6 +71,8 @@ export const PRODUCT_ASSET_BINDINGS: ProductAssetBinding[] = [
         assetKey: 'SIMPLE_QUAIL_JANGJORIM_180',
         status: 'confirmed',
         note: 'screenshot으로 실제 verified 썸네일(LAYOUT_02, node 69:17172)의 패키지 사진과 동일함을 확인',
+        // 소고기장조림130과 동일한 패키지 템플릿(상단 브랜드/문구 영역 비중이 큼)이라 동일하게 보정.
+        presentation: { visualScale: 1.22, offsetX: 0, offsetY: 0 },
       },
       {
         assetKind: 'plated-side',
@@ -225,10 +231,23 @@ export const PRODUCT_ASSET_BINDINGS: ProductAssetBinding[] = [
     productCode: 'SIMPLE_DOGANITANG_700',
     variants: [
       {
+        // 2026-08-25 asset 진단: node 2008:3752("느리게만든_본도가니탕_700g")를 실제
+        // screenshot으로 확인한 결과, 파우치/트레이 누끼샷(package)이 아니라 로고+조리 사진+
+        // 상품 카피 문구+상품명+영양정보가 전부 포함된 258x360 세로형 "상세페이지 카드"
+        // 이미지였다(11번가 렌더에서 실제로 이 카드 이미지 전체가 정사각형 슬롯에 잘려
+        // 들어간 것이 원인). 같은 "느리게만든" 컴포넌트셋의 형제 3개(추어탕/갈비찜/
+        // 대파육개장)도 동일한 카드형 구조를 쓰고 있어 같은 문제가 있을 가능성이 높지만, 이번
+        // 조사는 본도가니탕만 범위였으므로 그 3개는 건드리지 않았다 — 별도 확인 필요.
+        // "시뮬" 페이지, 실제 채널 썸네일 프레임(간편식_요리 등) 전체를 조사했지만 대체할 수
+        // 있는 진짜 package 누끼샷은 찾지 못했다. 추측으로 다른 asset을 대신 쓰지 않고, 실제
+        // package가 확인될 때까지 렌더 대상에서 제외한다(resolveProductAsset이 이 상태를
+        // 보고 명확히 실패 -> checkAssetResolvability가 PRODUCT_ASSET_NOT_RESOLVABLE로
+        // reviewRequired 처리).
         assetKind: 'package',
         source: { kind: 'component-variant', componentName: '느리게만든', variantValue: 'Property 1=느리게만든_본도가니탕_700g', confirmedNodeId: '2008:3752' },
         assetKey: 'SIMPLE_DOGANITANG_700',
-        status: 'confirmed',
+        status: 'rejected',
+        note: '실제 package 누끼샷이 아니라 로고+조리사진+상품명+영양정보가 포함된 상세페이지 카드 이미지(258x360)로 확인됨 — 대체 package 미확인, 렌더 대상에서 제외',
       },
     ],
   },

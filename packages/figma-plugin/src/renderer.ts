@@ -1,6 +1,6 @@
 import type { CompositionPlan } from '@thumbnail-generator/core';
 import { resolveTemplate, FIGMA_TEMPLATE_BINDINGS, type FigmaTemplateBinding, type FigmaSlotBinding } from './templateMapper';
-import { resolveProductAsset } from './assetResolver';
+import { resolveProductAsset, buildImageFill } from './assetResolver';
 
 export type RenderPlanResult = { ok: true; nodeId: string } | { ok: false; message: string };
 
@@ -119,9 +119,7 @@ export async function renderPlan(
       return { ok: false, message: resolved.message };
     }
 
-    (layer as GeometryMixin & MinimalFillsMixin).fills = [
-      { type: 'IMAGE', imageHash: resolved.imageHash, scaleMode: 'FILL' },
-    ];
+    (layer as GeometryMixin & MinimalFillsMixin).fills = buildImageFill(resolved.imageHash, resolved.presentation);
   }
 
   if (options.select ?? true) {

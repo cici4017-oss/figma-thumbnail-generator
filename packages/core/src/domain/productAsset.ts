@@ -47,6 +47,31 @@ export type ProductAssetSource =
       pageName?: string;
     };
 
+/**
+ * 같은 Layout 슬롯에 서로 다른 product asset이 들어가도 눈에 보이는 패키지 점유율이 비슷하게
+ * 보이도록 렌더 시점에 보정하는 값. Layout slot 자체의 좌표/크기는 절대 바꾸지 않고, 슬롯
+ * 안에서 이미지를 얼마나 확대/이동해서 보여줄지만 조정한다(렌더러가 IMAGE fill을
+ * scaleMode:'CROP' + imageTransform으로 적용— assetResolver.ts/renderer.ts 참고).
+ *
+ * 실제 조사 결과, Figma 노드 크기만으로는(예: 743x743 vs 327x327 컴포넌트) 실제 패키지 사진이
+ * 프레임을 얼마나 채우는지 알 수 없었다(같은 정사각형 안에서도 상품명 텍스트/브랜드 영역이
+ * 차지하는 비중이 상품마다 다르게 baked-in 되어 있음 — Figma Plugin API로는 이미지 픽셀 내용을
+ * 분석할 수 없어 자동 정규화가 불가능함을 확인했다). 그래서 이 값은 상품별로 실제 screenshot을
+ * 비교해서 수동으로 보정한다.
+ */
+export interface ProductAssetPresentation {
+  /**
+   * 1.0 = 보정 없음(기존과 동일, scaleMode:'FILL'). 1보다 크면 확대(=패키지가 상대적으로 작아
+   * 보이는 상품을 더 크게 보이도록), 1보다 작으면 축소한다. 축소(<1)는 이미지 원본 경계 밖을
+   * 샘플링할 수 있어(edge 아티팩트) 실제 screenshot으로 반드시 확인 후 사용해야 한다.
+   */
+  visualScale?: number;
+  /** 확대/축소 중심을 좌우로 미세 조정(정규화 좌표, 0=중앙). 기본 0. */
+  offsetX?: number;
+  /** 확대/축소 중심을 상하로 미세 조정(정규화 좌표, 0=중앙). 기본 0. */
+  offsetY?: number;
+}
+
 export interface ProductAssetVariant {
   assetKind: ProductAssetKind;
   source: ProductAssetSource;
@@ -55,9 +80,16 @@ export interface ProductAssetVariant {
   /**
    * 'code-fallback': 아직 실제 asset을 완전히 확정하지 못해 잠정값을 쓰는 상태.
    * 'confirmed': screenshot/구조 확인을 거쳐 실제 asset으로 확정된 상태.
+   * 'rejected': screenshot/구조 확인 결과 이 source가 실제로는 요청한 assetKind(예: package
+   *   누끼샷)가 아님이 확인된 상태(예: 조리 이미지+상품명이 포함된 상세페이지 컷). 올바른
+   *   asset을 찾기 전까지는 렌더러가 이 variant를 사용하지 않고 명확히 실패를 반환해야 한다
+   *   (추측 대체 금지 — assetResolver.ts가 이 상태를 확인해서 즉시 reviewRequired 경로로
+   *   보낸다).
    */
-  status: 'code-fallback' | 'confirmed';
+  status: 'code-fallback' | 'confirmed' | 'rejected';
   note?: string;
+  /** 렌더 시점 시각적 크기 보정(선택, package assetKind에서 주로 사용). */
+  presentation?: ProductAssetPresentation;
 }
 
 export interface ProductAssetBinding {

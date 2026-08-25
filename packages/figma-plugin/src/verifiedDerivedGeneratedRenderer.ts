@@ -1,6 +1,6 @@
 import type { CompositionPlan } from '@thumbnail-generator/core';
 import { resolveTemplate, FIGMA_TEMPLATE_BINDINGS, type FigmaTemplateBinding } from './templateMapper';
-import { resolveProductAsset } from './assetResolver';
+import { resolveProductAsset, buildImageFill } from './assetResolver';
 
 /**
  * Generated V2: 순수 좌표 공식(generatedLayoutGeometry.ts/mixedLayoutGeometry.ts, 이제
@@ -213,9 +213,7 @@ export async function renderVerifiedDerivedGeneratedPlan(
       return { ok: false, message: resolved.message };
     }
 
-    (layer as GeometryMixin & MinimalFillsMixin).fills = [
-      { type: 'IMAGE', imageHash: resolved.imageHash, scaleMode: 'FILL' },
-    ];
+    (layer as GeometryMixin & MinimalFillsMixin).fills = buildImageFill(resolved.imageHash, resolved.presentation);
     keptLayers.push(layer);
   }
 

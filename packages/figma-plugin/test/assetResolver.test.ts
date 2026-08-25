@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { installMockFigma, uninstallMockFigma, MockNode } from '../src/mock/mockFigma';
-import { resolveProductAsset, PRODUCT_ASSETS_PAGE_NAME } from '../src/assetResolver';
+import { resolveProductAsset, buildImageFill, PRODUCT_ASSETS_PAGE_NAME } from '../src/assetResolver';
 import type { ProductAssetBinding } from '@thumbnail-generator/core';
 
 /**
@@ -77,6 +77,33 @@ const MOCK_BINDINGS: ProductAssetBinding[] = [
         source: { kind: 'image-node', nodeId: 'node:image-node-source' },
         assetKey: 'MOCK_IMAGE_NODE_SOURCE',
         status: 'confirmed',
+      },
+    ],
+  },
+  {
+    // 본도가니탕 asset 진단 회귀: screenshot으로 확인 결과 실제 package가 아님이 확정된
+    // source. confirmedNodeId가 실제로 존재해도(=여기서는 존재하는 노드를 준비해 둠)
+    // 조회를 시도조차 하지 않고 즉시 실패해야 한다(추측 대체 금지).
+    productCode: 'MOCK_REJECTED_SOURCE',
+    variants: [
+      {
+        assetKind: 'package',
+        source: { kind: 'component-variant', componentName: 'mock-component', confirmedNodeId: 'node:rejected-but-exists' },
+        assetKey: 'MOCK_REJECTED_SOURCE',
+        status: 'rejected',
+        note: '조리 이미지+상품명이 포함된 상세페이지 카드로 확인됨 — package 아님',
+      },
+    ],
+  },
+  {
+    productCode: 'MOCK_WITH_PRESENTATION',
+    variants: [
+      {
+        assetKind: 'package',
+        source: { kind: 'component-variant', componentName: 'mock-component', confirmedNodeId: 'node:with-presentation' },
+        assetKey: 'MOCK_WITH_PRESENTATION',
+        status: 'confirmed',
+        presentation: { visualScale: 1.22, offsetX: 0, offsetY: 0 },
       },
     ],
   },
@@ -226,7 +253,88 @@ async function testConfirmedNodeWithoutImageFillFallsBackAndReportsBoth() {
   }
 }
 
+async function testRejectedStatusFailsWithoutAttemptingNodeLookup() {
+  const handle = installMockFigma();
+  try {
+    // confirmedNodeId가 가리키는 노드는 실제로 존재하고 이미지 fill도 있지만(=조회했다면
+    // "성공"했을 상황), status가 'rejected'이므로 조회 자체를 시도하지 않고 즉시 실패해야 한다.
+    const node = new MockNode('RECTANGLE', 'rejected-source-node');
+    node.id = 'node:rejected-but-exists';
+    node.fills = [{ type: 'IMAGE', imageHash: 'hash-should-never-be-used' }];
+    handle.currentPage.appendChild(node);
+
+    const result = await resolveProductAsset('MOCK_REJECTED_SOURCE', MOCK_BINDINGS);
+    assert.equal(result.ok, false, "status:'rejected'인 variant는 노드가 실제로 존재해도 사용하면 안 됨");
+    if (!result.ok) {
+      assert.match(result.message, /사용할 수 없는 것으로 판정/);
+      assert.match(result.message, /package 아님/);
+    }
+    console.log("  ✓ status:'rejected' variant는 confirmedNodeId가 실제로 유효해도 조회를 시도하지 않고 명확히 실패함(추측 대체 금지)");
+  } finally {
+    uninstallMockFigma();
+  }
+}
+
+async function testPresentationIsReturnedOnSuccess() {
+  const handle = installMockFigma();
+  try {
+    const node = new MockNode('RECTANGLE', 'presentation-source');
+    node.id = 'node:with-presentation';
+    node.fills = [{ type: 'IMAGE', imageHash: 'hash-with-presentation' }];
+    handle.currentPage.appendChild(node);
+
+    const result = await resolveProductAsset('MOCK_WITH_PRESENTATION', MOCK_BINDINGS);
+    assert.equal(result.ok, true);
+    if (result.ok) {
+      assert.deepEqual(result.presentation, { visualScale: 1.22, offsetX: 0, offsetY: 0 });
+    }
+    console.log('  ✓ ProductAssetVariant.presentation이 resolveProductAsset 결과에 그대로 전달됨');
+  } finally {
+    uninstallMockFigma();
+  }
+}
+
+function testBuildImageFillNoPresentationMatchesExistingFillBehavior() {
+  // presentation 없음 -> Layout slot 크기/모양에 전혀 영향 없던 기존 동작(scaleMode:'FILL')과
+  // 완전히 동일해야 한다(다른 모든 상품에 대해 시각적 회귀가 없음을 보장).
+  const fills = buildImageFill('hash-x');
+  assert.deepEqual(fills, [{ type: 'IMAGE', imageHash: 'hash-x', scaleMode: 'FILL' }]);
+
+  const fillsExplicitDefault = buildImageFill('hash-y', { visualScale: 1, offsetX: 0, offsetY: 0 });
+  assert.deepEqual(fillsExplicitDefault, [{ type: 'IMAGE', imageHash: 'hash-y', scaleMode: 'FILL' }]);
+  console.log('  ✓ buildImageFill: presentation 없음/기본값이면 기존과 동일하게 scaleMode:FILL(시각적 회귀 없음)');
+}
+
+function testBuildImageFillAppliesCropTransformForScale() {
+  // 소고기장조림/메추리알장조림 실제 보정값: visualScale=1.22, offset 없음(중앙 기준 확대).
+  const fills = buildImageFill('hash-beef', { visualScale: 1.22, offsetX: 0, offsetY: 0 });
+  assert.equal(fills.length, 1);
+  const fill = fills[0] as { type: string; scaleMode: string; imageTransform: number[][] };
+  assert.equal(fill.type, 'IMAGE');
+  assert.equal(fill.scaleMode, 'CROP');
+  const s = 1 / 1.22;
+  const expectedTx = (1 - s) / 2;
+  assert.ok(Math.abs(fill.imageTransform[0][0] - s) < 1e-9, 'imageTransform의 스케일 성분이 1/visualScale이어야 함');
+  assert.ok(Math.abs(fill.imageTransform[1][1] - s) < 1e-9);
+  assert.ok(Math.abs(fill.imageTransform[0][2] - expectedTx) < 1e-9, '중앙 정렬(offset 없음)이면 tx=(1-s)/2여야 함');
+  assert.ok(Math.abs(fill.imageTransform[1][2] - expectedTx) < 1e-9);
+  console.log('  ✓ buildImageFill: visualScale이 1이 아니면 scaleMode:CROP + imageTransform(확대+중앙정렬)을 사용함');
+}
+
+function testBuildImageFillAppliesOffset() {
+  const fills = buildImageFill('hash-x', { visualScale: 1.22, offsetX: 0.05, offsetY: -0.03 });
+  const fill = fills[0] as { imageTransform: number[][] };
+  const s = 1 / 1.22;
+  const base = (1 - s) / 2;
+  assert.ok(Math.abs(fill.imageTransform[0][2] - (base + 0.05)) < 1e-9, 'offsetX만큼 tx가 이동해야 함');
+  assert.ok(Math.abs(fill.imageTransform[1][2] - (base - 0.03)) < 1e-9, 'offsetY만큼 ty가 이동해야 함');
+  console.log('  ✓ buildImageFill: offsetX/offsetY가 imageTransform의 이동량에 정확히 반영됨');
+}
+
 async function main() {
+  testBuildImageFillNoPresentationMatchesExistingFillBehavior();
+  testBuildImageFillAppliesCropTransformForScale();
+  testBuildImageFillAppliesOffset();
   await testKnownGoodResolvesViaConfirmedBindingWithoutProductAssetsPage();
   await testDeepImageFillOnDescendant();
   await testImageNodeSourceKind();
@@ -235,6 +343,8 @@ async function main() {
   await testUnregisteredAssetKeyFallsBackToLegacyPage();
   await testBothPathsFailReturnsCombinedMessage();
   await testConfirmedNodeWithoutImageFillFallsBackAndReportsBoth();
+  await testRejectedStatusFailsWithoutAttemptingNodeLookup();
+  await testPresentationIsReturnedOnSuccess();
   console.log('assetResolver.test.ts: 모든 검증 통과');
 }
 

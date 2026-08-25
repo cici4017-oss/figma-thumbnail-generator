@@ -1,4 +1,9 @@
-import { PRODUCT_ASSET_BINDINGS, type ProductAssetBinding, type ProductAssetVariant } from '@thumbnail-generator/core';
+import {
+  PRODUCT_ASSET_BINDINGS,
+  type ProductAssetBinding,
+  type ProductAssetVariant,
+  type ProductAssetPresentation,
+} from '@thumbnail-generator/core';
 
 /**
  * "assetKey"(core에서는 불투명한 문자열)를 실제 Figma 이미지로 해석하는 계층.
@@ -21,7 +26,9 @@ import { PRODUCT_ASSET_BINDINGS, type ProductAssetBinding, type ProductAssetVari
 
 export const PRODUCT_ASSETS_PAGE_NAME = 'PRODUCT_ASSETS';
 
-export type ResolveAssetResult = { ok: true; imageHash: string } | { ok: false; message: string };
+export type ResolveAssetResult =
+  | { ok: true; imageHash: string; presentation?: ProductAssetPresentation }
+  | { ok: false; message: string };
 export type RegisterAssetResult = { ok: true } | { ok: false; message: string };
 
 function findProductAssetsPage(): PageNode | undefined {
@@ -63,6 +70,16 @@ function findAssetVariantByKey(
 
 /** ProductAssetBinding의 confirmed source(component-variant/image-node)로 직접 조회한다. */
 async function resolveFromConfirmedBinding(variant: ProductAssetVariant): Promise<ResolveAssetResult | null> {
+  // status: 'rejected' — screenshot/구조 확인 결과 실제 요청한 assetKind가 아님이 이미
+  // 확인된 source다(예: 상세페이지 카드 이미지를 package로 잘못 등록한 경우). confirmedNodeId가
+  // 있어도 조회를 시도하지 않고 즉시 명확한 사유로 실패한다 — 추측 대체 금지.
+  if (variant.status === 'rejected') {
+    return {
+      ok: false,
+      message: `assetKey "${variant.assetKey}"의 source는 실제 확인 결과 사용할 수 없는 것으로 판정되어 제외되었습니다: ${variant.note ?? '사유 없음'}`,
+    };
+  }
+
   const source = variant.source;
   const nodeId = source.kind === 'component-variant' ? source.confirmedNodeId : source.nodeId;
   if (!nodeId) return null; // confirmedNodeId가 없으면 이 경로로는 판단할 수 없음 -> legacy로
@@ -83,7 +100,7 @@ async function resolveFromConfirmedBinding(variant: ProductAssetVariant): Promis
     };
   }
 
-  return { ok: true, imageHash };
+  return { ok: true, imageHash, presentation: variant.presentation };
 }
 
 async function resolveFromLegacyProductAssetsPage(productKey: string): Promise<ResolveAssetResult> {
@@ -148,6 +165,39 @@ export async function resolveProductAsset(
     };
   }
   return legacyResult;
+}
+
+/**
+ * resolveProductAsset()이 반환한 imageHash(+선택적 presentation 보정값)로 실제 IMAGE fill
+ * 배열을 만든다. Layout slot 자체의 좌표/크기는 절대 건드리지 않고, presentation이 있을
+ * 때만 scaleMode를 'CROP'으로 바꿔 imageTransform으로 슬롯 안에서 이미지를 확대/이동해서
+ * 보여준다 — presentation이 없거나 visualScale이 1(기본값)이면 기존과 동일하게 'FILL'을
+ * 쓴다(하위 호환, 다른 모든 상품은 시각적으로 전혀 변하지 않는다).
+ */
+export function buildImageFill(imageHash: string, presentation?: ProductAssetPresentation): Paint[] {
+  const scale = presentation?.visualScale ?? 1;
+  const offsetX = presentation?.offsetX ?? 0;
+  const offsetY = presentation?.offsetY ?? 0;
+  if (scale === 1 && offsetX === 0 && offsetY === 0) {
+    return [{ type: 'IMAGE', imageHash, scaleMode: 'FILL' }];
+  }
+  // s = 이미지에서 샘플링할 정사각형 창의 한 변 길이(정규화 좌표). scale>1(확대)이면 s<1이 되어
+  // 이미지의 더 작은 영역을 슬롯 전체에 채운다(=확대되어 보임). tx/ty는 그 샘플링 창을
+  // 중앙 정렬한 뒤 offsetX/offsetY만큼 미세 이동한다.
+  const s = 1 / scale;
+  const tx = (1 - s) / 2 + offsetX;
+  const ty = (1 - s) / 2 + offsetY;
+  return [
+    {
+      type: 'IMAGE',
+      imageHash,
+      scaleMode: 'CROP',
+      imageTransform: [
+        [s, 0, tx],
+        [0, s, ty],
+      ],
+    },
+  ];
 }
 
 /**
