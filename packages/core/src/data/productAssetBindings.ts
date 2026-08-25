@@ -209,10 +209,20 @@ export const PRODUCT_ASSET_BINDINGS: ProductAssetBinding[] = [
     productCode: 'SIMPLE_CHUEOTANG_700',
     variants: [
       {
+        // 2026-08-25 재진단(느리게만든 4종 일괄 확인): node 2008:3748는 다른 상품(소고기장조림
+        // 등)과 달리 조리 사진+태그라인+상품명+중량/영양정보가 한 이미지에 합쳐진 258x360
+        // 세로형 "카드" 구조다. 처음엔 이걸 package가 아니라고 판단했지만, 파일 내 실제
+        // 마케팅 합성 프레임("갈비찜3_포장", "쿠팡_뼈없는 소갈비찜1~7" 등)에서도 이 동일한
+        // 카드 이미지가 실제 패키지 사진으로 그대로 쓰이고 있음을 확인 — 즉 이 카드가 느리게만든
+        // 라인의 실제 패키지 디자인이며, "다른 상품과 다르다"는 것은 잘못된 asset이 아니라
+        // 제품 라인별 디자인 차이였다. 대신 정사각형 슬롯에 중앙 크롭하면 상단 조리사진 비중이
+        // 커서 하단 상품명/중량이 일부 잘려 보이는 문제가 있어 offsetY로 보정한다(상세는
+        // SIMPLE_DOGANITANG_700 주석 참고).
         assetKind: 'package',
         source: { kind: 'component-variant', componentName: '느리게만든', variantValue: 'Property 1=느리게만든_본남도식추어탕_700g', confirmedNodeId: '2008:3748' },
         assetKey: 'SIMPLE_CHUEOTANG_700',
         status: 'confirmed',
+        presentation: { visualScale: 1, offsetX: 0, offsetY: 0.15 },
       },
     ],
   },
@@ -220,10 +230,12 @@ export const PRODUCT_ASSET_BINDINGS: ProductAssetBinding[] = [
     productCode: 'SIMPLE_GALBIJJIM_700',
     variants: [
       {
+        // 느리게만든 4종 공통 카드형 이미지 — SIMPLE_DOGANITANG_700 주석 참고.
         assetKind: 'package',
         source: { kind: 'component-variant', componentName: '느리게만든', variantValue: 'Property 1=느리게만든_갈비찜_700g', confirmedNodeId: '2008:3750' },
         assetKey: 'SIMPLE_GALBIJJIM_700',
         status: 'confirmed',
+        presentation: { visualScale: 1, offsetX: 0, offsetY: 0.15 },
       },
     ],
   },
@@ -231,23 +243,28 @@ export const PRODUCT_ASSET_BINDINGS: ProductAssetBinding[] = [
     productCode: 'SIMPLE_DOGANITANG_700',
     variants: [
       {
-        // 2026-08-25 asset 진단: node 2008:3752("느리게만든_본도가니탕_700g")를 실제
-        // screenshot으로 확인한 결과, 파우치/트레이 누끼샷(package)이 아니라 로고+조리 사진+
-        // 상품 카피 문구+상품명+영양정보가 전부 포함된 258x360 세로형 "상세페이지 카드"
-        // 이미지였다(11번가 렌더에서 실제로 이 카드 이미지 전체가 정사각형 슬롯에 잘려
-        // 들어간 것이 원인). 같은 "느리게만든" 컴포넌트셋의 형제 3개(추어탕/갈비찜/
-        // 대파육개장)도 동일한 카드형 구조를 쓰고 있어 같은 문제가 있을 가능성이 높지만, 이번
-        // 조사는 본도가니탕만 범위였으므로 그 3개는 건드리지 않았다 — 별도 확인 필요.
-        // "시뮬" 페이지, 실제 채널 썸네일 프레임(간편식_요리 등) 전체를 조사했지만 대체할 수
-        // 있는 진짜 package 누끼샷은 찾지 못했다. 추측으로 다른 asset을 대신 쓰지 않고, 실제
-        // package가 확인될 때까지 렌더 대상에서 제외한다(resolveProductAsset이 이 상태를
-        // 보고 명확히 실패 -> checkAssetResolvability가 PRODUCT_ASSET_NOT_RESOLVABLE로
-        // reviewRequired 처리).
+        // 2026-08-25 최초 진단: node 2008:3752("느리게만든_본도가니탕_700g")를 screenshot으로
+        // 확인한 결과, 다른 상품(소고기장조림 등)의 파우치 누끼샷과 달리 조리 사진+태그라인+
+        // 상품명+중량/영양정보가 한 이미지에 합쳐진 258x360 세로형 "카드" 구조였다. 정사각형
+        // 슬롯에 중앙 크롭(scaleMode:FILL)하면 상단 조리사진 비중이 커서 하단 상품명/중량이
+        // 잘려 "그냥 조리 사진처럼" 보이는 문제가 있어, 최초에는 이걸 잘못된 source로 보고
+        // status:'rejected'로 렌더 대상에서 제외했었다.
+        //
+        // 2026-08-25 재진단(느리게만든 4종: 추어탕/갈비찜/육개장 일괄 확인 중 발견): 파일 내
+        // 실제 마케팅 합성 프레임들("갈비찜3_포장", "쿠팡_뼈없는 소갈비찜1~7", "육개장5/7" 등,
+        // Page 12/간편식_채널_믹스 페이지)을 확인한 결과, 이 동일한 카드 이미지가 실제 선물세트/
+        // 채널 프로모션 목업에서 패키지 사진으로 그대로 쓰이고 있었다 — 즉 이 카드가 느리게만든
+        // 라인의 실제 패키지 디자인이 맞고(다른 상품과 다른 것은 asset 오류가 아니라 제품
+        // 라인별 패키지 디자인 차이), 문제는 source가 아니라 정사각형 슬롯 중앙 크롭 방식이었다.
+        // offsetY:0.15로 크롭 위치를 아래로 이동해서 상품명/중량/영양정보가 온전히 보이도록
+        // 보정한 결과(screenshot으로 확인)를 반영해 'confirmed'로 되돌리고 presentation을
+        // 추가한다 — rejected로 내렸던 이전 판정을 이번 재진단으로 뒤집음.
         assetKind: 'package',
         source: { kind: 'component-variant', componentName: '느리게만든', variantValue: 'Property 1=느리게만든_본도가니탕_700g', confirmedNodeId: '2008:3752' },
         assetKey: 'SIMPLE_DOGANITANG_700',
-        status: 'rejected',
-        note: '실제 package 누끼샷이 아니라 로고+조리사진+상품명+영양정보가 포함된 상세페이지 카드 이미지(258x360)로 확인됨 — 대체 package 미확인, 렌더 대상에서 제외',
+        status: 'confirmed',
+        note: '조리 사진+상품명+영양정보가 한 이미지에 합쳐진 카드형 구조지만, 파일 내 실제 마케팅 합성 프레임에서 동일 이미지가 패키지 사진으로 쓰이고 있어 느리게만든 라인의 실제 패키지 디자인으로 확인됨 — offsetY 보정으로 정사각형 슬롯에서도 상품명/중량이 온전히 보이도록 처리',
+        presentation: { visualScale: 1, offsetX: 0, offsetY: 0.15 },
       },
     ],
   },
@@ -255,10 +272,12 @@ export const PRODUCT_ASSET_BINDINGS: ProductAssetBinding[] = [
     productCode: 'SIMPLE_YUKGAEJANG_640',
     variants: [
       {
+        // 느리게만든 4종 공통 카드형 이미지 — SIMPLE_DOGANITANG_700 주석 참고.
         assetKind: 'package',
         source: { kind: 'component-variant', componentName: '느리게만든', variantValue: 'Property 1=느리게만든_본대파육개장_640g', confirmedNodeId: '2008:3758' },
         assetKey: 'SIMPLE_YUKGAEJANG_640',
         status: 'confirmed',
+        presentation: { visualScale: 1, offsetX: 0, offsetY: 0.15 },
       },
     ],
   },
