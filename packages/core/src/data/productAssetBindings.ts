@@ -163,10 +163,14 @@ export const PRODUCT_ASSET_BINDINGS: ProductAssetBinding[] = [
     productCode: 'SIMPLE_MINI_BUTTER_BEEF_JANGJORIM_70',
     variants: [
       {
+        // 2026-08-25 전체 asset QA: source 이미지 캔버스(1058x969)에 비해 실제 파우치가
+        // 작게 배치되어 있어(주변 골드 배경 여백이 큼) 정사각형 슬롯에 FILL하면 파우치가
+        // 지나치게 작아 보임을 screenshot으로 확인 → 70% 확대로 보정.
         assetKind: 'package',
         source: { kind: 'component-variant', componentName: '미니 장조림_박스+파우치', variantValue: 'Property 1=미니_본버터쇠고기장조림_70g', confirmedNodeId: '2008:3796' },
         assetKey: 'SIMPLE_MINI_BUTTER_BEEF_JANGJORIM_70',
         status: 'confirmed',
+        presentation: { visualScale: 1.7, offsetX: 0, offsetY: 0 },
       },
     ],
   },
@@ -176,10 +180,14 @@ export const PRODUCT_ASSET_BINDINGS: ProductAssetBinding[] = [
     productCode: 'SIMPLE_MINI_BUTTER_POTATO_JANGJORIM_75',
     variants: [
       {
+        // 2026-08-25 전체 asset QA: source 이미지 캔버스(437x535, 세로형)가 파우치보다 훨씬
+        // 커서(위 상품과 동일한 골드 배경 여백 문제) 정사각형 FILL 시 파우치가 매우 작게
+        // 보임을 확인 → 50% 확대로 보정(70%는 하단 상품명 텍스트가 잘려 60%보다 낮은 값 사용).
         assetKind: 'package',
         source: { kind: 'component-variant', componentName: '미니 장조림_박스+파우치', variantValue: 'Property 1=미니_본버터감자장조림_75g', confirmedNodeId: '2008:3790' },
         assetKey: 'SIMPLE_MINI_BUTTER_POTATO_JANGJORIM_75',
         status: 'confirmed',
+        presentation: { visualScale: 1.5, offsetX: 0, offsetY: 0 },
       },
     ],
   },
@@ -187,10 +195,13 @@ export const PRODUCT_ASSET_BINDINGS: ProductAssetBinding[] = [
     productCode: 'SIMPLE_QUAIL_JANGJORIM_1000',
     variants: [
       {
+        // 2026-08-25 전체 asset QA: 다른 메추리알장조림180(1.22배 보정)과 유사하게 파우치
+        // 주변 여백이 있어 정사각형 슬롯에서 다소 작게 보임을 확인 → 30% 확대로 보정.
         assetKind: 'package',
         source: { kind: 'component-variant', componentName: '메추리알 장조림_대용량', variantValue: 'Property 1=본죽_메추리알장조림_1kg', confirmedNodeId: '2008:3761' },
         assetKey: 'SIMPLE_QUAIL_JANGJORIM_1000',
         status: 'confirmed',
+        presentation: { visualScale: 1.3, offsetX: 0, offsetY: 0 },
       },
     ],
   },
@@ -198,10 +209,12 @@ export const PRODUCT_ASSET_BINDINGS: ProductAssetBinding[] = [
     productCode: 'SIMPLE_QUAIL_JANGJORIM_600',
     variants: [
       {
+        // 2026-08-25 전체 asset QA: SIMPLE_QUAIL_JANGJORIM_1000과 동일 컴포넌트셋, 동일 문제 확인.
         assetKind: 'package',
         source: { kind: 'component-variant', componentName: '메추리알 장조림_대용량', variantValue: 'Property 1=본죽_메추리알장조림_600g', confirmedNodeId: '2008:3767' },
         assetKey: 'SIMPLE_QUAIL_JANGJORIM_600',
         status: 'confirmed',
+        presentation: { visualScale: 1.35, offsetX: 0, offsetY: 0 },
       },
     ],
   },
